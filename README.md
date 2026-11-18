@@ -3818,3 +3818,30 @@ RowHeight="NaN" MinRowHeight="{DynamicResource DgRowHeight}"
 消息推送：`/api/notice`（前台，**免鉴权**，只回「已发布 + 生效期内」的消息，
 **不含**生效排期与发布开关）、`/api/admin/notices`（后台列表 + 统计 + 服务器时间）、
 `/api/admin/notice-save`、`/api/admin/notice-toggle`、`/api/admin/notice-delete`、`/api/admin/notice-clear`
+
+## 11. GitHub 开源发布与软件更新流程（2026-11-18）
+
+仓库：<https://github.com/libo770880/dip3-grouper-cs>（公开）。主分支 `main`，
+单提交干净历史（曾推过含 `data/settings.json` 密码哈希的历史，已用孤儿分支重建 +
+force push 清除；`settings.json` / `audit-log.json` 自此不入库，缺失时程序自动重建默认值）。
+
+### .gitignore 要点
+`bin/ obj/ dist/ _backups/ _shots/ data/_backup/` 及运行时状态
+`data/settings.json`、`data/audit-log.json`。真正入库约 200 文件 / 30MB（大头是 data/*.json 数据）。
+
+### 「检查更新」实现（v1.0.0 起）
+- `Desktop/UpdateChecker.cs`：`CurrentVersion` 常量 + GitHub
+  `releases/latest` API（8 秒超时，公开仓库免鉴权，UA 必带否则 403）；
+  版本比较接受 `v1.2.3 / 1.2.3 / 1.2` 与后缀 tag，逐段补零比较，解析失败一律判「不更新」。
+- 启动静默检查挂 `App.RunWithSplashAsync`（只有新版才弹框）；手动入口是
+  主窗口右上「检查更新」按钮（`MainWindow.OnCheckUpdate`，结果弹窗明确告知，含已是最新）。
+- 「打开下载页」用 `Process.Start(UseShellExecute)` 跳浏览器，不做自动替换安装
+  （自替换要处理运行中 exe 解锁，后续版本再议）。
+- 自检 #123 锁版本比较规则与 API 地址（改 owner 忘同步会报错）。
+
+### 发新版的固定动作
+1. 改 `UpdateChecker.CurrentVersion` → `publish-desktop.bat` 重打；
+2. `dist/` 下 zip 安装目录为 `DIP3-Desktop-vX.Y.Z.zip`
+   （**排除** `data/settings.json`、`data/audit-log.json`，勿带密码哈希出厂）；
+3. GitHub 新建 Release：tag 用 `vX.Y.Z`，上传 zip 资产；
+4. 用户端启动即收到新版提示。

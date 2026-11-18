@@ -62,6 +62,9 @@ public partial class MainWindow : Window
         // 后台改完软件名称/单位后要立刻反映到标题与品牌区
         App.SettingsChanged += ApplyBranding;
         App.SettingsChanged += OnAppSettingsChanged;
+
+        // 版本号只维护 UpdateChecker.CurrentVersion 一处：按钮提示从常量取，避免 XAML 里再写死一份
+        BtnUpdate.ToolTip = $"检查更新（当前版本 v{UpdateChecker.CurrentVersion}）：到 GitHub Release 下载新版本";
         Closed += (_, _) =>
         {
             App.SettingsChanged -= ApplyBranding;

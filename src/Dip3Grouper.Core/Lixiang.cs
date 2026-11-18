@@ -614,7 +614,10 @@ public class LixiangStore
     private static readonly Regex PageRe = new(@"PAGE\s*\\\* MERGEFORMAT\s*\d*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex TrailingWsRe = new(@"[ \t]+\n", RegexOptions.Compiled);
     private static readonly Regex HeaderRe = new(@"医疗服务价格项目立项指南解读辅导\s*\n?\s*（第(\d+)期）", RegexOptions.Compiled);
-    private static readonly Regex QRe = new(@"(?:^|\n)\s*(\d{1,3})[\.、．]\s*([^\n]{2,100}？)\s*\n?", RegexOptions.Compiled);
+    // 题面行：题号 + 单行文本，以问号收尾。问号必须同时收全角「？」与半角「?」——
+    // 2026-11-18 发现国家局解读原文里第 5 期第 4、11 两问以半角「?」收尾，
+    // 旧正则只认全角导致整题被吞进上一题答案（224 → 实际 226 条）。
+    private static readonly Regex QRe = new(@"(?:^|\n)\s*(\d{1,3})[\.、．]\s*([^\n]{2,100}[？?])\s*\n?", RegexOptions.Compiled);
     private static readonly Regex MultiNlRe = new(@"\n{2,}", RegexOptions.Compiled);
 
     /// <summary>
@@ -688,7 +691,7 @@ public class LixiangStore
                 var qa = qs[i];
                 // 答案的右边界 = 下一题「题号第一位数字」的位置，而不是「匹配结束 - 题面长度 - 1」。
                 // 后者隐含「题号前恰好一个换行」，正文与题号之间若多一个换行 / 空格就会把下一题的
-                // 「2.」留在答案末尾（224 条里 211 条中招，见 DanglingNoRe 的注释）。
+                // 「2.」留在答案末尾（2026-09 首次导入 224 条时 211 条中招，见 DanglingNoRe 的注释）。
                 var end = i + 1 < qs.Count ? qs[i + 1].NumAt : body.Length;
                 if (end < qa.At) end = qa.At;
                 var a = body.Substring(qa.At, end - qa.At).Trim();

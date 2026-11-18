@@ -3845,3 +3845,19 @@ force push 清除；`settings.json` / `audit-log.json` 自此不入库，缺失�
    （**排除** `data/settings.json`、`data/audit-log.json`，勿带密码哈希出厂）；
 3. GitHub 新建 Release：tag 用 `vX.Y.Z`，上传 zip 资产；
 4. 用户端启动即收到新版提示。
+
+### 11.1 解读辅导按国家局原文重导入（2026-11-18，v1.0.1）
+
+国家医保局解读辅导原文（<https://www.nhsa.gov.cn/module/download/downfile.jsp?classid=0&filename=976ce73a34c94bdab08920c94d2b5df6.wps>，
+WPS 二进制）重新导入：仍为 13 期，但**条数 224 → 226**。
+
+根因：解析器 `Lixiang.QRe` 只认全角「？」作题面结尾，而原文第 5 期
+第 4 问（多体位脊柱全长 X 线摄影拼接成像）、第 11 问（单侧上肢多部位 CT 收费）
+以**半角「?」**结尾 → 整题被吞进上一题答案。已改 `[？?]`，并把自检断言改成
+「相对当前版本号推导」（升版不再需要改测试）。
+
+- 修后：222 条与旧库逐字一致（证明文件内容未变，问题在导入），
+  5 期 3、5 期 10 两条答案恢复干净，找回 5 期 4、5 期 11 两问；
+  `HasDanglingNo` 残留 0。
+- 导入走项目自己的管线（`AdminService.ImportJiedu`，mode=replace），不手工改 JSON。
+- 备份 `data/_backup/lixiang.20261118-*.json`；自检 123/123。

@@ -102,7 +102,7 @@
           <Button x:Name="BtnUpdate" Style="{StaticResource Btn.Ghost}"
                   Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
                   Click="OnCheckUpdate"
-                  ToolTip="检查更新（当前版本 v1.0.0）：到 GitHub Release 下载新版本">
+                  ToolTip="检查更新：到 GitHub Release 下载新版本">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets"
                          FontSize="13" VerticalAlignment="Center" />

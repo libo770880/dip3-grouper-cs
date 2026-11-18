@@ -5091,33 +5091,43 @@ internal static class SelfTest
 
         Check("检查更新：版本号比较规则（纯逻辑，不联网）", d =>
         {
+            // 断言全部相对当前版本推导，不写死 1.0.x —— 以后每次升版不用再改这段
+            var cur = UpdateChecker.CurrentVersion;
+            var seg = cur.Split('.').Select(s => int.TryParse(s, out var n) ? n : -1).ToArray();
+            if (seg.Length < 2 || seg.Any(n => n < 0))
+                throw new Exception("CurrentVersion 应是至少两段的数字，当前：" + cur);
+            var major = seg[0];
+            var minor = seg[1];
+            var patch = seg.Length > 2 ? seg[2] : 0;
+            var nextPatch = $"{major}.{minor}.{patch + 1}";
+            var nextMinor = $"{major}.{minor + 1}";
+            var nextMajor = $"{major + 1}";
+
             // 基线：当前版本一定不比自己新
-            if (UpdateChecker.IsNewer(UpdateChecker.CurrentVersion))
+            if (UpdateChecker.IsNewer(cur))
                 throw new Exception("当前版本被判定为「比当前版本新」");
-            // v 前缀 / 无前缀 / 补零 / 前导零都要比对一致
-            if (!UpdateChecker.IsNewer("v1.0.1")) throw new Exception("v1.0.1 应判为新版");
-            if (!UpdateChecker.IsNewer("1.0.1")) throw new Exception("无 v 前缀 1.0.1 应判为新版");
-            if (!UpdateChecker.IsNewer("v1.1")) throw new Exception("两段版本 v1.1 应判为新版（补零比较）");
-            if (!UpdateChecker.IsNewer("v2")) throw new Exception("主版本 v2 应判为新版");
-            if (UpdateChecker.IsNewer("v1.0.0")) throw new Exception("v1.0.0 不应判为新版");
-            if (UpdateChecker.IsNewer("v0.9")) throw new Exception("旧版 v0.9 不应判为新版");
-            // 带后缀的 tag（v1.0.1-beta / v1.0.1+build）按 1.0.1 比较
-            if (!UpdateChecker.IsNewer("v1.0.1-beta")) throw new Exception("v1.0.1-beta 应判为新版");
-            if (UpdateChecker.IsNewer("v1.0.0-rc1")) throw new Exception("v1.0.0-rc1 不应判为新版");
+            // v 前缀 / 无前缀 / 补零都要比对一致
+            if (!UpdateChecker.IsNewer("v" + nextPatch)) throw new Exception($"v{nextPatch} 应判为新版");
+            if (!UpdateChecker.IsNewer(nextPatch)) throw new Exception($"无 v 前缀 {nextPatch} 应判为新版");
+            if (!UpdateChecker.IsNewer("v" + nextMinor)) throw new Exception($"两段版本 v{nextMinor} 应判为新版（补零比较）");
+            if (!UpdateChecker.IsNewer("v" + nextMajor)) throw new Exception($"主版本 v{nextMajor} 应判为新版");
+            if (UpdateChecker.IsNewer("v" + cur)) throw new Exception($"v{cur} 不应判为新版");
+            if (UpdateChecker.IsNewer("v0.0.1") && major + minor + patch > 1)
+                throw new Exception("旧版 v0.0.1 不应判为新版");
+            // 带后缀的 tag（vX.Y.Z-beta / +build）按数字段比较
+            if (!UpdateChecker.IsNewer("v" + nextPatch + "-beta")) throw new Exception($"v{nextPatch}-beta 应判为新版");
+            if (UpdateChecker.IsNewer("v" + cur + "-rc1")) throw new Exception($"v{cur}-rc1 不应判为新版");
             // 解析不了的一律 false（不能因为 tag 怪异就误报更新）
             if (UpdateChecker.IsNewer("")) throw new Exception("空 tag 不应判为新版");
             if (UpdateChecker.IsNewer("latest")) throw new Exception("非数字 tag 不应判为新版");
             if (UpdateChecker.IsNewer("v1.x")) throw new Exception("非法段 v1.x 不应判为新版");
-            // 与发布流程对齐：版本常量必须是可解析的三段式
-            if (UpdateChecker.CurrentVersion.Split('.').Length < 2)
-                throw new Exception("CurrentVersion 应至少是两段数字，当前：" + UpdateChecker.CurrentVersion);
             // Release API 地址必须指向本仓库（防止改了 owner 忘记同步）
             var api = typeof(UpdateChecker)
                 .GetField("LatestApi", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?
                 .GetValue(null) as string ?? "";
             if (!api.Contains("repos/libo770880/dip3-grouper-cs/releases/latest"))
                 throw new Exception("Release API 地址不指向 libo770880/dip3-grouper-cs：" + api);
-            d("v 前缀/补零/后缀 tag/非法 tag 全部按预期判定 · API 地址指向本仓库");
+            d($"当前 v{cur} · v 前缀/补零/后缀 tag/非法 tag 全部按预期判定 · API 地址指向本仓库");
         });
 
         // ================= 汇总 =================

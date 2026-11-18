@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIP 3.0 分组器 · 管理控制台</title>
+<style>
+  :root {
+    --bg: #eef1f5; --card: #ffffff; --border: #e3e7ee; --border-strong: #d3d9e3;
+    --text: #1c2333; --muted: #6b7280; --faint: #9aa3b2;
+    --primary: #2456d8; --primary-dark: #1c46b5; --primary-soft: #edf2fe;
+    --ok: #15803d; --ok-soft: #e7f7ec; --warn: #b45309; --warn-soft: #fdf3e0;
+    --gray: #6b7280; --gray-soft: #f1f2f5; --danger: #dc2626;
+    --radius: 10px; --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+    --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 13.5px;
+    display: flex; min-height: 100vh;
+  }
+
+  /* ============ 侧边栏 ============ */
+  .sidebar {
+    width: 216px; flex-shrink: 0; background: #101a30; color: #cbd5e1;
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  }
+  .brand { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand .logo { display: flex; align-items: center; gap: 10px; }
+  .brand .mark {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    background: linear-gradient(135deg, #3b82f6, #2456d8);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 14px;
+  }
+  .brand .t1 { color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .5px; }
+  .brand .t2 { font-size: 11px; color: #7d8aa5; margin-top: 2px; }
+  .nav { padding: 12px 10px; flex: 1; }
+  .nav a {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 3px;
+    border-radius: 8px; color: #aab6cc; text-decoration: none; font-size: 13.5px; cursor: pointer;
+  }
+  .nav a:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+  .nav a.active { background: var(--primary); color: #fff; font-weight: 600; }
+  .nav .icon { width: 17px; text-align: center; font-size: 14px; }
+  .sidebar .foot {
+    padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.08); font-size: 11.5px; color: #7d8aa5;
+  }
+  .sidebar .foot a { color: #9db4e8; text-decoration: none; }
+
+  /* ============ 主区 ============ */
+  .main { flex: 1; min-width: 0; padding: 22px 26px 50px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { font-size: 18px; font-weight: 700; }
+  .page-head .sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+
+  /* 统计卡 */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 16px; position: relative; overflow: hidden;
+  }
+  .stat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--primary)); }
+  .stat .num { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat .hint { font-size: 11px; color: var(--faint); margin-top: 4px; }
+  .stat.c-primary { --accent: #2456d8; } .stat.c-green { --accent: #16a34a; }
+  .stat.c-gray { --accent: #9aa3b2; } .stat.c-orange { --accent: #ea580c; }
+  .stat.c-purple { --accent: #7c3aed; } .stat.c-teal { --accent: #0d9488; }
+
+  /* 面板 */
+  section {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 18px;
+  }
+  section h2 { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  section h2 .no {
+    background: linear-gradient(135deg, #2456d8, #4f7ef8); color: #fff; border-radius: 7px;
+    font-size: 11px; padding: 2.5px 8px; font-weight: 700; box-shadow: 0 2px 6px rgba(36,86,216,.28);
+  }
+  section .desc { font-size: 12.5px; color: var(--muted); margin: 6px 0 14px; line-height: 1.75; }
+  section .desc b { color: var(--text); }
+
+  /* 病种库管理页: 导入面板 */
+  .import-panel {
+    background: linear-gradient(160deg, #f4f7ff 0%, #eef2fb 60%, #f7f9ff 100%);
+    border: 1px solid #d9e2f5; border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+  }
+
+  /* 表单控件 */
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input[type=file] { font-size: 12.5px; color: var(--muted); max-width: 380px; }
+  input[type=file]::file-selector-button {
+    border: 1px solid var(--border-strong); background: #fff; border-radius: 6px;
+    padding: 5px 12px; margin-right: 10px; font-size: 12.5px; cursor: pointer;
+  }
+  input[type=file]::file-selector-button:hover { border-color: var(--primary); color: var(--primary); }
+  input[type=text], select {
+    padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 7px;
+    font-size: 13px; background: #fff; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  input[type=text]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  button { font-family: inherit; }
+  button.primary {
+    background: var(--primary); color: #fff; border: none; border-radius: 7px;
+    padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: var(--shadow); transition: background .15s;
+  }
+  button.primary:hover { background: var(--primary-dark); }
+  button.primary:disabled { opacity: .55; cursor: wait; }
+  button.ghost {
+    background: #fff; color: var(--primary); border: 1px solid var(--primary);
+    border-radius: 7px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  button.ghost:hover { background: var(--primary-soft); }
+  button.mini {
+    padding: 4px 11px; font-size: 12px; cursor: pointer; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: #fff; color: var(--text);
+  }
+  button.mini:hover { border-color: var(--primary); color: var(--primary); }
+  button.mini.gray-on { background: var(--gray); color: #fff; border-color: var(--gray); }
+  button.mini.danger { color: var(--danger); }
+  button.mini.danger:hover { border-color: var(--danger); background: #fef2f2; }
+
+  /* 分段选择 */
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .seg label { position: relative; }
+  .seg input { position: absolute; opacity: 0; }
+  .seg span {
+    display: block; padding: 7px 16px; font-size: 12.5px; cursor: pointer;
+    background: #fff; color: var(--muted); font-weight: 500;
+  }
+  .seg input:checked + span { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+
+  /* 消息条 */
+  .msg {
+    font-size: 12.5px; margin-top: 12px; padding: 9px 13px; border-radius: 8px;
+    display: none; line-height: 1.6; white-space: pre-wrap;
+  }
+  .msg.show { display: block; }
+  .msg.busy { display: block; background: var(--primary-soft); color: var(--primary); }
+  .msg.ok { display: block; background: var(--ok-soft); color: var(--ok); }
+  .msg.err { display: block; background: #fef2f2; color: var(--danger); }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.9; }
+  .meta b { color: var(--text); }
+  .chip {
+    display: inline-block; background: var(--gray-soft); border-radius: 20px;
+    padding: 1px 10px; margin: 0 3px 3px 0; font-size: 11.5px; color: var(--text);
+  }
+
+  /* 表格 */
+  .tbl-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .tbl-wrap {
+    border: 1px solid var(--border); border-radius: 8px; overflow: auto;
+    max-height: 480px; background: #fff;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+  th, td {
+    padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border);
+    overflow-wrap: anywhere; word-break: break-all; vertical-align: top;
+  }
+  thead th {
+    background: #f7f8fa; font-weight: 600; font-size: 12px; color: var(--muted);
+    position: sticky; top: 0; z-index: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  tbody tr:nth-child(even) { background: #fafbfd; }
+  tbody tr:hover { background: #f8faff; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.mono { font-family: var(--mono); font-size: 12px; letter-spacing: -.2px; }
+  /* 查看态单行省略, 悬浮展开完整内容（配合 title 提示） */
+  td.ellip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td.ellip:hover { white-space: normal; overflow-wrap: anywhere; word-break: break-all; background: #fffdf2; }
+  tr.grayed td { background: #f6f7f9; color: #9ca3af; }
+  tr.grayed td .mono { text-decoration: line-through; }
+  .tag { display: inline-block; padding: 1.5px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .tag.gray { background: var(--gray-soft); color: var(--gray); border: 1px solid #e0e3e9; }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.none { background: var(--warn-soft); color: var(--warn); }
+  .pager { display: flex; gap: 10px; align-items: center; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+  .legend { display: flex; gap: 14px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .legend .dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
+
+  .add-grid {
+    display: grid; grid-template-columns: 140px 1.4fr 150px 1.4fr 1fr auto;
+    gap: 8px; margin-top: 14px; align-items: center;
+  }
+  /* ============ 概览：数据卡 ============ */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); gap: 14px; }
+  .dcard {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 15px 18px 13px; position: relative; overflow: hidden;
+  }
+  .dcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--primary)); }
+  .dcard .hd { font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
+  .dcard .big { font-size: 23px; font-weight: 800; margin: 3px 0 10px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .dcard .big i { font-size: 13px; font-weight: 600; font-style: normal; color: var(--muted); margin-left: 3px; }
+  .dcard .kv { display: grid; grid-template-columns: 74px 1fr; gap: 1px 10px; font-size: 12px; line-height: 1.9; }
+  .dcard .kv .k { color: var(--muted); }
+  .dcard .kv .v { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dcard .kv .v.mono { font-family: var(--mono); font-size: 11.5px; }
+  .dcard.c-p { --accent: #2456d8; } .dcard.c-g { --accent: #16a34a; }
+  .dcard.c-v { --accent: #7c3aed; } .dcard.c-t { --accent: #0d9488; }
+  /* 只读胶囊（区段条数） */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pills span {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+    border: 1px solid var(--border-strong); border-radius: 20px; font-size: 12.5px;
+    background: #fff; color: var(--muted);
+  }
+  .pills span b { color: var(--primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* 病种库列表 tab */
+  .lib-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .lib-tabs a {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+    border: 1px solid var(--border-strong); border-radius: 20px; font-size: 12.5px;
+    cursor: pointer; background: #fff; color: var(--muted); user-select: none;
+  }
+  .lib-tabs a:hover { border-color: var(--primary); color: var(--primary); }
+  .lib-tabs a b { font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .lib-tabs a.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .lib-tabs a.on b { color: #cfe0ff; }
+  .tbl-wrap input[type=text] { padding: 4px 8px; font-size: 12.5px; width: 100%; min-width: 70px; }
+  .tbl-wrap select { padding: 4px 8px; font-size: 12.5px; }
+  @media (max-width: 1100px) { .add-grid { grid-template-columns: 1fr 1fr; } .sidebar { width: 64px; } .sidebar .t1, .sidebar .t2, .foot .backlink, .auth-line .who, .nav a .txt { display: none; } .auth-line { justify-content: center; } }
+
+  /* ============ 登录 ============ */
+  input[type=password] {
+    padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 7px;
+    font-size: 13px; background: #fff; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  input[type=password]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .auth-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 1.6; }
+  .auth-line .lamp { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex: none; }
+  .auth-line .lamp.on { background: #34d399; }
+  .auth-line button {
+    border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.08); color: #dbe6ff;
+    border-radius: 6px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+  }
+  .auth-line button:hover { background: rgba(255,255,255,.18); color: #fff; }
+  .mask {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(15,23,42,.42); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .mask.show { display: flex; }
+  .modal {
+    width: 100%; max-width: 384px; background: #fff; border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(15,23,42,.28); padding: 22px 24px 20px;
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 4px; }
+  .modal .sub { font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .modal label { display: block; font-size: 12.5px; color: var(--muted); margin: 13px 0 5px; }
+  .modal input { width: 100%; }
+  .modal .acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .modal .err { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 18px; }
+  .modal .warn, .modal-warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px;
+    padding: 9px 12px; font-size: 12.5px; line-height: 1.75; margin-top: 14px; }
+
+  /* ============ 系统设置 ============ */
+  .cfg-grid { display: grid; grid-template-columns: 120px 1fr; gap: 14px 14px; align-items: center; max-width: 680px; }
+  .cfg-grid .lb { font-size: 12.5px; color: var(--muted); }
+  .cfg-grid input[type=text], .cfg-grid input[type=password] { width: 100%; max-width: 330px; }
+  .cfg-grid .hint { font-size: 11.5px; color: var(--faint); line-height: 1.75; margin-top: 4px; }
+  .cfg-grid .chk { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  textarea.cfg-ta {
+    width: 100%; min-height: 96px; padding: 8px 10px; border: 1px solid var(--border-strong);
+    border-radius: 7px; font-size: 12.5px; font-family: var(--mono); line-height: 1.8;
+    resize: vertical; outline: none; background: #fff;
+  }
+  textarea.cfg-ta:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .only-desktop { font-size: 11.5px; color: var(--faint); line-height: 1.8; margin-top: 12px;
+    border-top: 1px dashed var(--border-strong); padding-top: 10px; }
+
+  /* ============ 消息推送 ============ */
+  input[type=datetime-local] {
+    padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 7px;
+    font-size: 13px; background: #fff; outline: none; font-family: inherit; color: var(--text);
+  }
+  input[type=datetime-local]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .nt-ta {
+    width: 100%; min-height: 110px; padding: 9px 11px; border: 1px solid var(--border-strong);
+    border-radius: 7px; font-size: 13px; font-family: inherit; line-height: 1.8;
+    resize: vertical; outline: none; background: #fff; color: var(--text);
+  }
+  .nt-ta:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .nt-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .nt-tt { font-weight: 700; }
+  .nt-bd {
+    color: var(--muted); font-size: 12px; margin-top: 3px; line-height: 1.7; white-space: pre-wrap;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .nt-pill { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 7px; }
+  .nt-pill.lv-info { background: var(--primary-soft); color: var(--primary); }
+  .nt-pill.lv-warn { background: var(--warn-soft); color: var(--warn); }
+  .nt-pill.lv-danger { background: #fef2f2; color: var(--danger); }
+  .nt-pill.st-on { background: var(--ok-soft); color: var(--ok); }
+  .nt-pill.st-draft { background: var(--gray-soft); color: var(--gray); }
+  .nt-pill.st-exp { background: var(--gray-soft); color: var(--faint); }
+  .nt-pill.st-wait { background: var(--warn-soft); color: var(--warn); }
+  .nt-pin { color: var(--warn); font-size: 11px; margin-left: 6px; }
+  .nt-tip { font-size: 11.5px; color: var(--faint); margin-left: 10px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 侧边栏 ============ -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">
+      <div class="mark" id="brandMark">D3</div>
+      <div>
+        <div class="t1" id="brandName">DIP 3.0 分组器</div>
+        <div class="t2" id="brandSub">管理控制台</div>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <a class="active" data-page="dash" onclick="switchPage('dash')"><span class="icon">▦</span><span class="txt">概览</span></a>
+    <a data-page="config" onclick="switchPage('config')"><span class="icon">▤</span><span class="txt">病种库管理</span></a>
+    <a data-page="lixiang" onclick="switchPage('lixiang')"><span class="icon">◫</span><span class="txt">立项指南</span></a>
+    <a data-page="mapping" onclick="switchPage('mapping')"><span class="icon">⇄</span><span class="txt">映射与灰码</span></a>
+    <a data-page="dezhou" onclick="switchPage('dezhou')"><span class="icon">▩</span><span class="txt">德州物价</span></a>
+    <a data-page="notice" onclick="switchPage('notice')"><span class="icon">🔔</span><span class="txt">消息推送</span></a>
+    <a data-page="settings" onclick="switchPage('settings')"><span class="icon">⚙</span><span class="txt">系统设置</span></a>
+  </nav>
+  <div class="foot">
+    <div class="auth-line" id="authBar"></div>
+    <a class="backlink" href="/" style="display:inline-block;margin-top:9px">← 返回分组界面</a>
+  </div>
+</aside>
+
+<!-- ============ 主区 ============ -->
+<div class="main">
+
+  <!-- ===== 概览 ===== -->
+  <div class="page active" id="page-dash">
+    <div class="page-head">
+      <h1>概览</h1>
+      <div class="sub">病种库、映射表、立项指南与德州物价的运行状态总览</div>
+    </div>
+
+    <div class="card-grid" id="dashCards" style="margin-bottom:18px"></div>
+
+    <section>
+      <h2><span class="no">快捷入口</span></h2>
+      <div class="desc">常用操作直达。</div>
+      <div class="row">
+        <button class="primary" onclick="switchPage('mapping')">导入编码对照表</button>
+        <button class="ghost" onclick="switchPage('config')">更新病种库</button>
+        <button class="ghost" onclick="switchPage('lixiang')">导入立项指南</button>
+        <button class="ghost" onclick="switchPage('dezhou')">导入德州物价</button>
+      </div>
+      <div class="meta" id="dashMeta"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">①</span> 病种库各区段条数</h2>
+      <div class="pills" id="dashDiseasePills"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 立项指南各区段条数</h2>
+      <div class="pills" id="dashLixiangPills"></div>
+    </section>
+  </div>
+
+  <!-- ===== 病种库管理 ===== -->
+  <div class="page" id="page-config">
+    <div class="page-head">
+      <h1>病种库管理</h1>
+      <div class="sub">按区段导入与明细维护，改动立即生效并持久化</div>
+    </div>
+
+    <section class="cfg-import">
+      <h2><span class="no">①</span> 按结构分表导入</h2>
+      <div class="desc">
+        选择要导入的<b>区段</b>，再上传对应的 Excel（sheet 名不限，<b>首行为列名</b>，与下方明细维护列表一致即可）。<br>
+        <b>覆盖</b>＝该区段整表替换；<b>追加/更新</b>＝按序号/编码存在则更新、不存在则新增。导入后立即生效。
+      </div>
+      <div class="import-panel">
+        <div class="row">
+          <select id="diseasesTab" style="width:200px"></select>
+          <input type="file" id="diseasesFile" accept=".xlsx,.xls,.csv">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span class="seg">
+            <label><input type="radio" name="disMode" value="upsert" checked><span>追加/更新</span></label>
+            <label><input type="radio" name="disMode" value="replace"><span>覆盖</span></label>
+          </span>
+          <span style="flex:1"></span>
+          <button class="ghost" onclick="downloadDiseasesTpl()">⬇ 该表模板</button>
+          <button class="ghost" onclick="location.href='/api/admin/diseases-template'">⬇ 全量模板</button>
+          <button class="primary" id="btnDiseases" onclick="importDiseases()">导入该表</button>
+        </div>
+      </div>
+      <div class="msg" id="diseasesMsg"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 当前病种库构成</h2>
+      <div class="desc">各层病种数量与排除表规模。</div>
+      <div class="stat-grid" id="configCounts"></div>
+      <div class="meta" id="configMeta"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">③</span> 病种库明细维护</h2>
+      <div class="desc">按区段 tab 浏览与维护，行内编辑 / 新增 / 删除，改动立即生效并持久化。</div>
+      <div class="lib-tabs" id="libTabs"></div>
+      <div class="tbl-toolbar">
+        <input type="text" id="libQ" placeholder="按任意字段搜索（编码 / 名称 / 序号…）" style="width:300px" onkeydown="if(event.key==='Enter')loadLib(1)">
+        <button class="primary" onclick="loadLib(1)">查 询</button>
+        <span style="flex:1"></span>
+        <button class="ghost" id="btnLibAdd" onclick="startLibAdd()">＋ 新增</button>
+      </div>
+      <div class="tbl-wrap" style="max-height:520px">
+        <table>
+          <thead id="libHead"></thead>
+          <tbody id="libBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="mini" onclick="libPageMove(-1)">上一页</button>
+        <span id="libPageInfo"></span>
+        <button class="mini" onclick="libPageMove(1)">下一页</button>
+      </div>
+      <div class="msg" id="libMsg"></div>
+    </section>
+  </div>
+
+  <!-- ===== 立项指南 ===== -->
+  <div class="page" id="page-lixiang">
+    <div class="page-head">
+      <h1>立项指南管理</h1>
+      <div class="sub">国家医疗服务价格立项指南：整簿 / 分区段导入，项目与使用说明一体维护</div>
+    </div>
+
+    <section>
+      <h2><span class="no">①</span> 导入立项指南</h2>
+      <div class="desc">
+        支持国家立项指南<b>整簿导入</b>（每个 sheet 一类指南，自动识别首行标题与表头，类别小标题行自动归并为项目类别），或选择<b>单个区段</b>仅导入一张表（首行需含「项目名称」）。<br>
+        表头识别列：<b>序号｜项目名称｜服务产出｜价格构成｜加收项｜扩展项｜计价单位（计价单元）｜计价说明（使用说明）</b>。<br>
+        <b>覆盖</b>＝整簿替换同名区段；<b>追加/更新</b>＝按项目名称存在则更新、不存在则新增。
+      </div>
+      <div class="import-panel">
+        <div class="row">
+          <select id="lxTabSel" style="width:240px">
+            <option value="">— 整簿导入（按 sheet 自动分区段）—</option>
+          </select>
+          <input type="file" id="lxFile" accept=".xlsx,.xls,.csv">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span class="seg">
+            <label><input type="radio" name="lxMode" value="replace" checked><span>覆盖</span></label>
+            <label><input type="radio" name="lxMode" value="upsert"><span>追加/更新</span></label>
+          </span>
+          <span style="flex:1"></span>
+          <button class="ghost" onclick="downloadLxTpl()">⬇ 该表模板</button>
+          <button class="ghost" onclick="location.href='/api/admin/lixiang-template'">⬇ 全量模板</button>
+          <button class="primary" id="btnLx" onclick="importLixiang()">导入</button>
+        </div>
+      </div>
+      <div class="msg" id="lxImportMsg"></div>
+      <div class="meta" id="lxMeta"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 解读辅导导入（持续更新）</h2>
+      <div class="desc">
+        国家医保局《医疗服务价格项目立项指南解读辅导》文档（支持 <b>.doc / .docx / .wps / .txt</b>），自动按「（第N期）」分册并解析问答条目。<br>
+        <b>合并更新</b>＝同（期,题号）覆盖、新增追加——新的一期发布后直接上传合并即可；<b>整库替换</b>＝清空现有解读后全量导入。
+      </div>
+      <div class="import-panel">
+        <div class="row">
+          <input type="file" id="jdFile" accept=".doc,.docx,.wps,.txt">
+          <span class="seg">
+            <label><input type="radio" name="jdMode" value="merge" checked><span>合并更新</span></label>
+            <label><input type="radio" name="jdMode" value="replace"><span>整库替换</span></label>
+          </span>
+          <button class="primary" id="btnJd" onclick="importJiedu()">导入</button>
+        </div>
+      </div>
+      <div class="msg" id="jdImportMsg"></div>
+      <div class="meta" id="jdMeta"></div>
+      <div class="lib-tabs" id="jdIssueChips" style="margin-top:8px"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">③</span> 立项指南明细维护</h2>
+      <div class="desc">按指南区段浏览与维护，行内编辑 / 新增 / 删除，使用说明（计价说明）一同维护，改动立即生效并持久化。</div>
+      <div class="lib-tabs" id="lxLibTabs"></div>
+      <div class="tbl-toolbar">
+        <input type="text" id="lxQ" placeholder="按任意字段搜索（名称 / 类别 / 加收项 / 使用说明…）" style="width:320px" onkeydown="if(event.key==='Enter')loadLx(1)">
+        <button class="primary" onclick="loadLx(1)">查 询</button>
+        <span style="flex:1"></span>
+        <button class="ghost" onclick="startLxAdd()">＋ 新增</button>
+      </div>
+      <div class="tbl-wrap" style="max-height:520px">
+        <table>
+          <thead id="lxHead"></thead>
+          <tbody id="lxBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="mini" onclick="lxPageMove(-1)">上一页</button>
+        <span id="lxPageInfo"></span>
+        <button class="mini" onclick="lxPageMove(1)">下一页</button>
+      </div>
+      <div class="msg" id="lxMsg"></div>
+      <div class="desc" style="margin-top:14px">类级「使用说明」（立项指南正文中的适用规则汇总，作用于该类全部项目，前台选中该类时展示）：</div>
+      <div class="lib-toolbar" style="margin:8px 0">
+        <select id="lxGuideSel" style="width:240px" onchange="loadLxGuideUsage()"></select>
+      </div>
+      <textarea id="lxGuideUsage" rows="7" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.7;font-family:inherit;resize:vertical"></textarea>
+      <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
+        <button class="primary" onclick="saveLxGuideUsage()">保存本类使用说明</button>
+        <span class="msg" id="lxGuideMsg" style="margin:0"></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 映射与灰码 ===== -->
+  <div class="page" id="page-mapping">
+    <div class="page-head">
+      <h1>ICD-10 → 医保编码映射与灰码</h1>
+      <div class="sub">编码对照表导入、灰码标注维护、翻译测试</div>
+    </div>
+
+    <section>
+      <h2><span class="no">①</span> 导入编码对照表</h2>
+      <div class="desc">
+        支持列名自动识别：<b>国临版编码 / ICD-10编码 / 诊断编码 / 院内编码</b>｜<b>国临版名称</b>｜<b>医保版2.0编码 / 医保编码</b>｜<b>医保版2.0名称</b>｜<b>灰码</b>（可缺省）。<br>
+        <b>灰码自动识别</b>：xlsx 中「医保版2.0编码」单元格<b>背景为灰色</b>的行自动标注为灰码；也可用「灰码」列（是/否）；医保编码为空的行同样标灰。<br>
+        灰码编码不参与映射转换（视为不可用编码），分组时保留原编码并标记。
+      </div>
+      <div class="row">
+        <input type="file" id="mappingFile" accept=".xlsx,.xls,.csv">
+        <span class="seg">
+          <label><input type="radio" name="impMode" value="replace" checked><span>覆盖导入</span></label>
+          <label><input type="radio" name="impMode" value="append"><span>追加/更新</span></label>
+        </span>
+        <button class="primary" id="btnMapping" onclick="importMapping()">导入映射表</button>
+      </div>
+      <div class="msg" id="mappingMsg"></div>
+      <div class="meta" id="mappingMeta"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 映射查询与灰码维护</h2>
+      <div class="tbl-toolbar">
+        <input type="text" id="q" placeholder="按编码 / 名称 / 医保编码 / 医保名称 搜索" style="width:320px" onkeydown="if(event.key==='Enter')loadMapping(1)">
+        <select id="grayFilter" onchange="loadMapping(1)">
+          <option value="">全部状态</option>
+          <option value="1">仅灰码</option>
+          <option value="0">仅正常</option>
+        </select>
+        <button class="primary" onclick="loadMapping(1)">查 询</button>
+        <span style="flex:1"></span>
+        <input type="text" id="testCode" placeholder="单码翻译测试 如 A09.901" style="width:190px" onkeydown="if(event.key==='Enter')testTranslate()">
+        <button class="ghost" onclick="testTranslate()">翻译测试</button>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--ok-soft);border:1px solid #b7e0c3"></span>已映射</span>
+        <span><span class="dot" style="background:var(--warn-soft);border:1px solid #f2ddb8"></span>无映射</span>
+        <span><span class="dot" style="background:#6b7280"></span>灰码（不可用）</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <colgroup>
+            <col style="width:56px">
+            <col style="width:150px">
+            <col style="width:27%">
+            <col style="width:150px">
+            <col style="width:22%">
+            <col style="width:76px">
+            <col style="width:160px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>国临版 / ICD-10 编码</th>
+              <th>名称</th>
+              <th>医保版 2.0 编码</th>
+              <th>医保名称</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="mappingBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="mini" onclick="pageMove(-1)">上一页</button>
+        <span id="pageInfo"></span>
+        <button class="mini" onclick="pageMove(1)">下一页</button>
+      </div>
+
+      <div class="add-grid">
+        <input type="text" id="addCode" placeholder="ICD-10 编码 *">
+        <input type="text" id="addName" placeholder="ICD-10 名称">
+        <input type="text" id="addIns" placeholder="医保编码">
+        <input type="text" id="addInsName" placeholder="医保名称">
+        <input type="text" id="addNote" placeholder="备注">
+        <button class="ghost" onclick="addMapping()">＋ 添加</button>
+      </div>
+      <div class="msg" id="editMsg"></div>
+    </section>
+  </div>
+
+  <!-- ===== 德州物价 ===== -->
+  <div class="page" id="page-dezhou">
+    <div class="page-head">
+      <h1>德州物价</h1>
+      <div class="sub">德州市立项指南规范整合项目：按文号导入、明细维护、类别使用说明</div>
+    </div>
+
+    <section>
+      <h2><span class="no">①</span> 按文号导入</h2>
+      <div class="desc">
+        上传德州各批规范整合通知的<b>附件项目表</b>（.xlsx/.xls，前 5 行内同时含「项目编码」「项目名称」即识别为表头）。<br>
+        <b>覆盖该批</b>＝先清空所选文号的现有数据再导入（选「（不清空，按文件中文号）」则整库替换）；<b>追加/更新</b>＝按（文号, 项目编码）存在则更新、不存在则新增。
+      </div>
+      <div class="import-panel">
+        <div class="row">
+          <select id="dzDocSel" style="width:280px"></select>
+          <input type="file" id="dzFile" accept=".xlsx,.xls">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span class="seg">
+            <label><input type="radio" name="dzMode" value="replace" checked><span>覆盖该批</span></label>
+            <label><input type="radio" name="dzMode" value="append"><span>追加/更新</span></label>
+          </span>
+          <span style="flex:1"></span>
+          <button class="ghost" onclick="location.href='/api/admin/dezhou-template'">⬇ 导入模板</button>
+          <button class="ghost" onclick="exportDezhou()">⬆ 导出当前筛选</button>
+          <button class="primary" id="btnDz" onclick="importDezhou()">导入</button>
+        </div>
+      </div>
+      <div class="msg" id="dzImportMsg"></div>
+      <div class="meta" id="dzMeta"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 规模与构成</h2>
+      <div class="stat-grid" id="dzStats"></div>
+      <div class="desc" style="margin:10px 0 8px">各批次（点击筛选明细）：</div>
+      <div class="lib-tabs" id="dzBatchChips"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">③</span> 明细维护</h2>
+      <div class="desc">按文号 / 类别 / 项目性质筛选，行内编辑、新增、删除，改动立即生效并持久化。</div>
+      <div class="tbl-toolbar">
+        <input type="text" id="dzQ" placeholder="编码前缀 / 名称 / 服务产出 / 计价说明（支持拼音）" style="width:300px" onkeydown="if(event.key==='Enter')loadDz(1)">
+        <select id="dzDocFilter" onchange="loadDz(1)"><option value="">全部文号</option></select>
+        <select id="dzCatFilter" onchange="loadDz(1)"><option value="">全部类别</option></select>
+        <select id="dzKindFilter" onchange="loadDz(1)">
+          <option value="">全部性质</option>
+          <option value="main">主项目</option>
+          <option value="add">加收项</option>
+          <option value="ext">扩展项</option>
+        </select>
+        <select id="dzInsFilter" onchange="loadDz(1)">
+          <option value="">医保支付不限</option>
+          <option value="是">医保支付</option>
+          <option value="否">非医保支付</option>
+        </select>
+        <select id="dzLevelFilter" onchange="loadDz(1)">
+          <option value="">级别不限</option>
+          <option value="3">三级有价</option>
+          <option value="2">二级有价</option>
+          <option value="1">一级有价</option>
+          <option value="eq">各级同价</option>
+        </select>
+        <button class="primary" onclick="loadDz(1)">查 询</button>
+        <span style="flex:1"></span>
+        <button class="ghost" onclick="startDzAdd()">＋ 新增</button>
+      </div>
+      <div class="tbl-wrap" style="max-height:520px">
+        <table>
+          <thead id="dzHead"></thead>
+          <tbody id="dzBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="mini" onclick="dzPageMove(-1)">上一页</button>
+        <span id="dzPageInfo"></span>
+        <button class="mini" onclick="dzPageMove(1)">下一页</button>
+      </div>
+      <div class="msg" id="dzMsg"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">④</span> 类别使用说明</h2>
+      <div class="desc">
+        德州文件正文中按<b>类别</b>给出的适用规则（一行一条，作用于该类全部项目，前台选中该类时展示）。保存后立即生效。
+      </div>
+      <div class="row">
+        <select id="dzUsageDoc" style="width:280px" onchange="fillUsageCats()"></select>
+        <select id="dzUsageCat" style="width:240px" onchange="loadUsage()"></select>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="dzUsageText" rows="6" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.7;font-family:inherit;resize:vertical"></textarea>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
+        <button class="primary" onclick="saveUsage()">保存本类使用说明</button>
+        <span class="msg" id="dzUsageMsg" style="margin:0"></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 消息推送 ===== -->
+  <div class="page" id="page-notice">
+    <div class="page-head">
+      <h1>消息推送</h1>
+      <div class="sub">向前台（分组查询页）推送通知 / 公告；前台每 60 秒自动检查一次，同事们无需刷新页面</div>
+    </div>
+
+    <section>
+      <h2><span class="no">①</span> <span id="ntFormTitle">发布新消息</span></h2>
+      <div class="desc">
+        「钉住」的消息会<b>常驻显示在前台导航栏下方</b>（横幅），不钉的只进前台右上角「消息中心」抽屉，有新消息时自动弹出一次。<br>
+        生效期留空＝立即生效 / 长期有效；填了就只在时间段内出现，适合排班调整、系统维护这类临时通知。
+      </div>
+      <div class="cfg-grid" style="grid-template-columns:92px 1fr;max-width:880px;align-items:start">
+        <div class="lb" style="padding-top:9px">级别</div>
+        <div>
+          <span class="seg">
+            <label><input type="radio" name="ntLevel" value="info" checked><span>一般</span></label>
+            <label><input type="radio" name="ntLevel" value="warn"><span>提醒</span></label>
+            <label><input type="radio" name="ntLevel" value="danger"><span>重要</span></label>
+          </span>
+          <div class="hint">只影响前台配色与图标：一般（蓝）/ 提醒（橙）/ 重要（红）。</div>
+        </div>
+        <div class="lb" style="padding-top:9px">标题</div>
+        <div>
+          <input type="text" id="ntTitle" placeholder="如：10 月 8 日起执行调整后的 DIP 3.0 病种库" style="width:100%;max-width:none">
+          <div class="hint">最多 60 字；留空则自动取正文首行。</div>
+        </div>
+        <div class="lb" style="padding-top:9px">正文</div>
+        <div>
+          <textarea class="nt-ta" id="ntBody" placeholder="支持换行，前台按原样展示（最多 2000 字）"></textarea>
+        </div>
+        <div class="lb" style="padding-top:9px">生效开始</div>
+        <div>
+          <input type="datetime-local" id="ntStart" style="width:220px"><span class="nt-tip">留空＝立即生效</span>
+        </div>
+        <div class="lb" style="padding-top:9px">失效时间</div>
+        <div>
+          <input type="datetime-local" id="ntEnd" style="width:220px"><span class="nt-tip">留空＝长期有效</span>
+        </div>
+        <div class="lb" style="padding-top:9px">选项</div>
+        <div style="display:flex;gap:22px;align-items:center;padding-top:4px">
+          <label class="nt-chk"><input type="checkbox" id="ntPinned"> 钉住（前台常驻横幅）</label>
+          <label class="nt-chk"><input type="checkbox" id="ntPublish" checked> 立即发布</label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="ntSaveBtn" onclick="saveNotice()">保存</button>
+        <button class="ghost" onclick="newNotice()">清空表单</button>
+        <span class="msg" id="ntMsg" style="margin:0"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="no">②</span> 消息列表</h2>
+      <div class="stat-grid" id="ntStats" style="margin-bottom:14px"></div>
+      <div class="tbl-wrap" style="max-height:460px">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">级别</th>
+              <th>标题 / 正文</th>
+              <th style="width:86px">状态</th>
+              <th style="width:170px">生效期</th>
+              <th style="width:120px">更新时间</th>
+              <th style="width:200px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="ntList"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="ghost" onclick="clearDraftNotices()">清理全部草稿</button>
+        <button class="ghost" onclick="window.open('/', '_blank')">↗ 到前台看效果</button>
+        <span class="msg" id="ntMsg2" style="margin:0"></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 系统设置 ===== -->
+  <div class="page" id="page-settings">
+    <div class="page-head">
+      <h1>系统设置</h1>
+      <div class="sub">网页端只维护与网页有关的设置；桌面客户端专有的项不在此处</div>
+    </div>
+
+    <section>
+      <h2><span class="no">基本设置</span></h2>
+      <div class="desc">显示在浏览器标题与后台侧栏的品牌位置。</div>
+      <div class="cfg-grid">
+        <div class="lb">软件名称</div>
+        <div>
+          <input type="text" id="cfAppName" placeholder="DIP 3.0 分组器">
+          <div class="hint">留空则回落默认名；保存后侧栏与标题立即跟随。</div>
+        </div>
+        <div class="lb">单位 / 副名</div>
+        <div>
+          <input type="text" id="cfAppSub" placeholder="可空，如：平阴县中医医院">
+          <div class="hint">填了显示在软件名称下方。</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" onclick="saveApp()">保存</button>
+        <button class="ghost" onclick="loadSettings(true)">重新载入</button>
+        <span class="msg" id="cfAppMsg" style="margin:0"></span>
+      </div>
+      <div class="only-desktop">
+        界面主题（indigo / azure 等）与「关闭时最小化到托盘」属于桌面客户端，网页端有独立样式，不在此维护。
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="no">后台登录</span></h2>
+      <div class="desc">只拦「会改数据」的操作 —— 导入、新增、修改、删除、灰码标注；浏览与查询始终免登录，同事们直接打开就能看。</div>
+      <div class="cfg-grid">
+        <div class="lb">登录校验</div>
+        <div>
+          <label class="chk"><input type="checkbox" id="cfLoginOn"> 开启（推荐）</label>
+          <div class="hint">关掉后局域网内任何人都能改数据，仅建议在完全可信的内网里临时使用。</div>
+        </div>
+        <div class="lb">登录账号</div>
+        <div>
+          <input type="text" id="cfUser" placeholder="admin">
+          <div class="hint">不区分大小写；留空回落 admin。</div>
+        </div>
+        <div class="lb">新密码</div>
+        <div>
+          <input type="password" id="cfPass1" placeholder="留空表示不改动" autocomplete="new-password">
+          <div class="hint">至少 6 位。改完你自己不用重登，其他已登录的浏览器会掉线。</div>
+        </div>
+        <div class="lb">确认密码</div>
+        <div>
+          <input type="password" id="cfPass2" placeholder="再输一次" autocomplete="new-password">
+          <div class="hint">与桌面客户端共用同一份口令，改一处两端一致。</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" onclick="saveLogin()">保存</button>
+        <span class="msg" id="cfLoginMsg" style="margin:0"></span>
+      </div>
+      <div class="modal-warn" id="cfPassWarn" style="display:none"></div>
+    </section>
+
+    <section>
+      <h2><span class="no">立项指南参数</span></h2>
+      <div class="desc">新增 / 编辑立项指南项目时下拉框的候选值，一行一个；留空表示自动取现有数据里的去重值。</div>
+      <div class="cfg-grid" style="grid-template-columns:120px 1fr;max-width:790px;align-items:start">
+        <div class="lb" style="padding-top:8px">项目类别</div>
+        <textarea class="cfg-ta" id="cfCats" placeholder="一行一个，例如：&#10;综合类&#10;临床诊疗类"></textarea>
+        <div class="lb" style="padding-top:8px">计价单位</div>
+        <textarea class="cfg-ta" id="cfUnits" placeholder="一行一个，例如：&#10;次&#10;日&#10;项"></textarea>
+      </div>
+      <div class="hint" id="cfLxNote" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" onclick="saveLxParams()">保存</button>
+        <button class="ghost" onclick="extractLxParams()">从现有数据提取</button>
+        <span class="msg" id="cfLxMsg" style="margin:0"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="no">数据分发共享口令</span></h2>
+      <div class="desc">保护「给客户端更新数据」用的分发接口（/api/data/*）。填了之后，桌面客户端必须在「后台管理 → 数据更新」里填同一个口令才拉得到数据；留空＝不校验，院内谁都能拉。</div>
+      <div class="cfg-grid">
+        <div class="lb">共享口令</div>
+        <div>
+          <div style="display:flex;gap:8px;align-items:center;max-width:330px">
+            <input type="password" id="cfShare" placeholder="留空 = 不校验" autocomplete="new-password" style="flex:1">
+            <button class="ghost" type="button" onclick="toggleShare()" title="显示 / 隐藏">👁</button>
+          </div>
+          <div class="hint">这是<b>数据分发</b>的共享口令，与上面的后台登录口令是两回事，互不影响；改完立即生效，不用重启服务。</div>
+        </div>
+      </div>
+      <div class="hint" id="cfShareNote" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" onclick="saveShare()">保存</button>
+        <button class="ghost" onclick="loadSettings(true)">重新载入</button>
+        <span class="msg" id="cfShareMsg" style="margin:0"></span>
+      </div>
+      <div class="only-desktop">
+        客户端侧填口令的位置：桌面客户端 →「后台管理」→「数据更新」→ 数据源配置 → 共享口令（与这里保持一致）。
+      </div>
+    </section>
+  </div>
+
+  
+</div>
+
+<!-- ============ 登录弹窗 ============ -->
+<div class="mask" id="loginMask">
+  <div class="modal">
+    <h3>后台登录</h3>
+    <div class="sub" id="lgSub">网页后台的「改动数据」操作需要登录；浏览与查询无需登录。</div>
+    <label>登录账号</label>
+    <input type="text" id="lgUser" value="admin" autocomplete="username">
+    <label>登录口令</label>
+    <input type="password" id="lgPass" autocomplete="current-password"
+           onkeydown="if (event.key === 'Enter') submitLogin()">
+    <div class="err" id="lgErr"></div>
+    <div class="acts">
+      <button class="ghost" onclick="closeLogin(false)">取消</button>
+      <button class="primary" id="lgBtn" onclick="submitLogin()">登录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let curPage = 1, total = 0, pageSize = 50;
+
+// ---------- 会话（只影响「改动数据」的操作，浏览查询不弹登录）----------
+let __session = { loginEnabled: true, authenticated: false, user: '' };
+let __loginResolve = null;
+
+/** 统一请求封装：遇 401 needLogin 先弹登录框，登录成功后原样重试一次。 */
+async function jfetch(url, opt) {
+  let r = await fetch(url, opt);
+  if (r.status === 401) {
+    const j = await r.json().catch(() => ({}));
+    if (!j.needLogin) throw new Error(j.error || r.statusText);
+    const ok = await askLogin(j.error);
+    if (!ok) throw new Error(j.error || '已取消登录');
+    r = await fetch(url, opt);
+  }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+/** 弹出登录框并等待结果（true = 已登录）。 */
+function askLogin(reason) {
+  return new Promise(resolve => {
+    __loginResolve = resolve;
+    if (reason) document.getElementById('lgSub').textContent = reason;
+    document.getElementById('lgErr').textContent = '';
+    document.getElementById('lgUser').value = __session.user || 'admin';
+    document.getElementById('lgPass').value = '';
+    document.getElementById('loginMask').classList.add('show');
+    setTimeout(() => document.getElementById('lgPass').focus(), 30);
+  });
+}
+
+function closeLogin(ok) {
+  document.getElementById('loginMask').classList.remove('show');
+  const r = __loginResolve;
+  __loginResolve = null;
+  if (r) r(!!ok);
+}
+
+async function submitLogin() {
+  const user = document.getElementById('lgUser').value.trim();
+  const password = document.getElementById('lgPass').value;
+  const err = document.getElementById('lgErr'), btn = document.getElementById('lgBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user, password }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { err.textContent = '✗ ' + (j.error || '登录失败'); return; }
+    __session = { loginEnabled: j.loginEnabled !== false, authenticated: true, user: j.user || user };
+    renderAuth();
+    closeLogin(true);
+  } catch (e) {
+    err.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doLogout() {
+  try { await fetch('/api/admin/logout', { method: 'POST' }); } catch (e) { /* 忽略：本地已登出 */ }
+  __session.authenticated = false;
+  renderAuth();
+  __settingsLoaded = false;
+}
+
+/** 侧栏底部的登录状态区。 */
+function renderAuth() {
+  const bar = document.getElementById('authBar');
+  if (!__session.loginEnabled) {
+    bar.innerHTML = '<span class="lamp"></span><span class="who">登录校验已关闭</span>'
+      + '<button onclick="switchPage(\'settings\')">去开启</button>';
+    return;
+  }
+  bar.innerHTML = __session.authenticated
+    ? `<span class="lamp on"></span><span class="who">已登录 ${esc(__session.user || '')}</span>`
+      + '<button onclick="doLogout()">退出</button>'
+    : '<span class="lamp"></span><span class="who">未登录 · 仅可浏览</span>'
+      + '<button onclick="askLogin()">登录</button>';
+}
+
+async function loadSession() {
+  try {
+    __session = await (await fetch('/api/admin/session')).json();
+  } catch (e) { /* 接口异常时按未登录处理 */ }
+  renderAuth();
+}
+
+/** 品牌与标题跟随「软件名称」设置（免鉴权接口，失败则保留默认文案）。 */
+async function loadBrand() {
+  try {
+    const r = await (await fetch('/api/settings/public')).json();
+    if (r.appName) {
+      document.title = r.appName + ' · 管理控制台';
+      document.getElementById('brandName').textContent = r.appName;
+      document.getElementById('brandMark').textContent = r.logoText || 'D3';
+    }
+    document.getElementById('brandSub').textContent = r.appSubName || '管理控制台';
+  } catch (e) { /* 保留默认文案 */ }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function setMsg(id, text, cls) {
+  const el = document.getElementById(id);
+  el.className = 'msg ' + (cls || 'busy');
+  el.textContent = text;
+}
+
+function cfgName(k) {
+  return { xianqi: '先期分组', bingxiang: '并项病种', fz_shaoshang: '烧伤细分', fz_zhongliu: '肿瘤细分', fz_jiehe: '结核细分', jiehe_resist: '耐药拓展码', jichu: '基础病种', excludedDiags: '不纳入诊断', excludedProcs: '不纳入手术', jiceng: '基层病种' }[k] || k;
+}
+
+/** counts 值兼容两种形态: 数字 或 {label,total} */
+function cntOf(v) {
+  return (v && typeof v === 'object') ? (v.total ?? 0) : (v ?? 0);
+}
+
+function fmtTime(iso) {
+  return iso ? esc(iso.replace('T', ' ').slice(0, 19)) : '—';
+}
+
+// ---------- 页面切换 ----------
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.page === name));
+  if (name === 'settings') loadSettings();   // 需要登录，未登录会顺带弹框
+  if (name === 'notice') loadNotices();      // 同上（草稿属未公开信息）
+}
+
+/** 支持 /admin?p=dezhou 直达某一页（便于分享链接）；缺省为概览 */
+function openPageFromUrl() {
+  const p = new URLSearchParams(location.search).get('p');
+  if (p && document.getElementById('page-' + p)) switchPage(p);
+}
+
+// ---------- 状态加载 ----------
+async function loadStatus() {
+  const s = await jfetch('/api/admin/status');
+  const c = s.config || {}, m = s.mapping || {};
+  const lx = s.lixiang || {}, dz = s.dezhou || {};
+  const counts = c.counts || {};
+
+  // ---- 概览：四张数据卡（与桌面端后台「概览」信息一致）----
+  const secTotal = Object.values(counts).reduce((a, v) => a + cntOf(v), 0);
+  document.getElementById('dashCards').innerHTML = `
+    <div class="dcard c-p">
+      <div class="hd">病种库</div>
+      <div class="big">${Object.keys(counts).length} 个区段</div>
+      <div class="kv">
+        <div class="k">总条数</div><div class="v">${secTotal.toLocaleString()}</div>
+        <div class="k">导入时间</div><div class="v">${c.importedAt ? fmtTime(c.importedAt) : '内置默认'}</div>
+        <div class="k">数据来源</div><div class="v" title="${esc(c.sourceName || '')}">${esc(c.sourceName) || '—'}</div>
+        <div class="k">配置文件</div><div class="v mono">config/dip3-config.json</div>
+      </div>
+    </div>
+    <div class="dcard c-g">
+      <div class="hd">映射表（ICD-10 → 医保）</div>
+      <div class="big">${(m.total ?? 0).toLocaleString()} 条</div>
+      <div class="kv">
+        <div class="k">已映射</div><div class="v">${(m.mapped ?? 0).toLocaleString()}</div>
+        <div class="k">灰码</div><div class="v">${(m.gray ?? 0).toLocaleString()}</div>
+        <div class="k">导入时间</div><div class="v">${m.importedAt ? fmtTime(m.importedAt) : '未导入'}</div>
+        <div class="k">数据来源</div><div class="v" title="${esc(m.sourceName || '')}">${esc(m.sourceName) || '—'}</div>
+      </div>
+    </div>
+    <div class="dcard c-v">
+      <div class="hd">立项指南</div>
+      <div class="big">${(lx.total ?? 0).toLocaleString()} 个项目</div>
+      <div class="kv">
+        <div class="k">覆盖区段</div><div class="v">${lx.sections ?? 0} 个</div>
+        <div class="k">解读辅导</div><div class="v">${lx.issues ?? 0} 期 · ${(lx.jieduTotal ?? 0).toLocaleString()} 条</div>
+        <div class="k">导入时间</div><div class="v">${lx.importedAt ? fmtTime(lx.importedAt) : '未导入'}</div>
+        <div class="k">数据文件</div><div class="v mono">data/lixiang.json</div>
+      </div>
+    </div>
+    <div class="dcard c-t">
+      <div class="hd">德州物价</div>
+      <div class="big">${(dz.total ?? 0).toLocaleString()} 条</div>
+      <div class="kv">
+        <div class="k">项目构成</div><div class="v">主项 ${(dz.main ?? 0).toLocaleString()} · 加收 ${(dz.add ?? 0).toLocaleString()} · 扩展 ${(dz.ext ?? 0).toLocaleString()}</div>
+        <div class="k">医保支付</div><div class="v">${(dz.insured ?? 0).toLocaleString()} 条</div>
+        <div class="k">覆盖批次</div><div class="v">${dz.batchCount ?? 0} 批 · ${dz.categoryCount ?? 0} 类</div>
+        <div class="k">使用说明</div><div class="v">${dz.usageCovered ?? 0}/${dz.usageCategories ?? 0} 类 · ${(dz.usageEntries ?? 0).toLocaleString()} 条</div>
+      </div>
+    </div>`;
+
+  document.getElementById('configMeta').innerHTML = c.importedAt
+    ? `当前病种库：<b>${esc(c.sourceName || '')}</b>　导入时间：${fmtTime(c.importedAt)}`
+    : '尚未通过控制台导入病种库（使用内置默认配置）';
+  document.getElementById('mappingMeta').innerHTML = m.importedAt
+    ? `当前映射表：<b>${esc(m.sourceName || '')}</b>　导入时间：${fmtTime(m.importedAt)}`
+    : '尚未导入映射表';
+
+  document.getElementById('configCounts').innerHTML = Object.entries(counts).map(([k, v]) => `
+    <div class="stat c-primary" style="--accent:#7c93d8"><div class="num">${cntOf(v).toLocaleString()}</div><div class="lbl">${cfgName(k)}</div></div>`).join('');
+
+  document.getElementById('dashDiseasePills').innerHTML = Object.entries(counts).map(([k, v]) =>
+    `<span>${cfgName(k)}<b>${cntOf(v).toLocaleString()}</b></span>`).join('') || '<span>暂无数据</span>';
+
+  document.getElementById('dashMeta').innerHTML = `
+    病种库：<b>${c.importedAt ? esc(c.sourceName || '') + '（' + fmtTime(c.importedAt) + '）' : '内置默认'}</b><br>
+    映射表：<b>${m.importedAt ? esc(m.sourceName || '') + '（' + fmtTime(m.importedAt) + '，灰码 ' + (m.gray ?? 0).toLocaleString() + '）' : '未导入'}</b>`;
+
+  if (typeof renderDzStats === 'function') renderDzStats(dz);
+}
+
+// ---------- 病种库导入 ----------
+
+/** 按病种库结构导入（区段 sheet → 区段列表） */
+async function importDiseases() {
+  const f = document.getElementById('diseasesFile').files[0];
+  if (!f) { alert('请选择要导入的病种库 Excel（可先下载该表模板）'); return; }
+  const tab = document.getElementById('diseasesTab').value;
+  if (!tab) { alert('请选择要导入的区段'); return; }
+  const mode = document.querySelector('input[name=disMode]:checked').value;
+  const btn = document.getElementById('btnDiseases');
+  btn.disabled = true;
+  setMsg('diseasesMsg', `正在导入「${cfgName(tab)}」（${mode === 'replace' ? '覆盖' : '追加/更新'}模式）…`, 'busy');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('mode', mode);
+  fd.append('tab', tab);
+  try {
+    const r = await jfetch('/api/admin/diseases-import', { method: 'POST', body: fd });
+    const x = (r.report || {})[tab];
+    if (!x) { setMsg('diseasesMsg', '⚠ 未识别到表头——请确认首行列名与「下载该表模板」一致', 'err'); }
+    else {
+      let txt = `✓ ${x.label} 导入完成：新增 ${x.added}`;
+      if (x.updated) txt += `，更新 ${x.updated}`;
+      if (x.errorCount) txt += `，失败 ${x.errorCount}${x.errors.length ? '（' + x.errors.join('；') + '）' : ''}`;
+      setMsg('diseasesMsg', txt, x.errorCount ? 'err' : 'ok');
+    }
+    loadStatus();
+    loadLibTabs().then(() => loadLib());
+  } catch (e) {
+    setMsg('diseasesMsg', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/** 下载当前选中区段的单表模板 */
+function downloadDiseasesTpl() {
+  const tab = document.getElementById('diseasesTab').value;
+  if (!tab) { alert('请先选择区段'); return; }
+  location.href = '/api/admin/diseases-template?tab=' + encodeURIComponent(tab);
+}
+
+// ---------- 映射导入 ----------
+async function importMapping() {
+  const f = document.getElementById('mappingFile').files[0];
+  if (!f) { alert('请选择映射表文件'); return; }
+  const mode = document.querySelector('input[name=impMode]:checked').value;
+  const btn = document.getElementById('btnMapping');
+  btn.disabled = true;
+  setMsg('mappingMsg', `正在解析并导入（${mode === 'replace' ? '覆盖' : '追加'}模式），大表可能需要数秒…`, 'busy');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('mode', mode);
+  try {
+    const r = await jfetch('/api/admin/mapping-import', { method: 'POST', body: fd });
+    setMsg('mappingMsg',
+      `✓ ${mode === 'replace' ? '覆盖' : '追加'}导入完成：解析 ${r.parsed.toLocaleString()} 行，新增 ${r.added.toLocaleString()}，更新 ${r.updated.toLocaleString()}；当前总数 ${r.total.toLocaleString()}，其中灰码 ${r.stats.gray.toLocaleString()}（含背景色识别）`,
+      'ok');
+    loadStatus();
+    loadMapping(1);
+  } catch (e) {
+    setMsg('mappingMsg', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- 映射列表（行内编辑） ----------
+let editingMapId = null;
+
+async function loadMapping(page) {
+  curPage = page || curPage;
+  const q = document.getElementById('q').value.trim();
+  const gray = document.getElementById('grayFilter').value;
+  const r = await jfetch(`/api/admin/mapping?q=${encodeURIComponent(q)}&gray=${gray}&page=${curPage}&pageSize=${pageSize}`);
+  total = r.total;
+  const tbody = document.getElementById('mappingBody');
+  if (!r.rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--faint);padding:28px">暂无数据，请先导入编码对照表</td></tr>';
+  } else {
+    tbody.innerHTML = r.rows.map(row => {
+      if (editingMapId === row.id) {
+        return `
+      <tr class="editing">
+        <td>${row.id}</td>
+        <td><input type="text" id="e-code" value="${esc(row.code)}"></td>
+        <td><input type="text" id="e-name" value="${esc(row.name)}"></td>
+        <td><input type="text" id="e-ins" value="${esc(row.insCode)}"></td>
+        <td><input type="text" id="e-insname" value="${esc(row.insName)}"></td>
+        <td><span class="tag none">编辑中</span></td>
+        <td>
+          <button class="mini" style="background:var(--primary);color:#fff;border-color:var(--primary)" onclick="saveMapping(${row.id})">保存</button>
+          <button class="mini" onclick="cancelMapEdit()">取消</button>
+        </td>
+      </tr>`;
+      }
+      return `
+      <tr class="${row.gray ? 'grayed' : ''}">
+        <td>${row.id}</td>
+        <td class="mono ellip" title="${esc(row.code)}">${esc(row.code)}</td>
+        <td class="ellip" title="${esc(row.name)}">${esc(row.name)}</td>
+        <td class="mono ellip" title="${esc(row.insCode)}">${esc(row.insCode) || '—'}</td>
+        <td class="ellip" title="${esc(row.insName)}">${esc(row.insName)}</td>
+        <td>${row.gray ? '<span class="tag gray">灰码</span>' : (row.insCode ? '<span class="tag ok">已映射</span>' : '<span class="tag none">无映射</span>')}</td>
+        <td>
+          <button class="mini" onclick="startMapEdit(${row.id})">编辑</button>
+          <button class="mini ${row.gray ? '' : 'gray-on'}" onclick="toggleGray(${row.id}, ${!row.gray})">${row.gray ? '取消灰码' : '标灰'}</button>
+          <button class="mini danger" onclick="delMapping(${row.id})">删除</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  document.getElementById('pageInfo').textContent = `第 ${curPage} / ${pages} 页 · 共 ${total.toLocaleString()} 条`;
+}
+
+function startMapEdit(id) { editingMapId = id; loadMapping(); }
+function cancelMapEdit() { editingMapId = null; loadMapping(); }
+
+async function saveMapping(id) {
+  const body = {
+    id,
+    code: document.getElementById('e-code').value.trim(),
+    name: document.getElementById('e-name').value.trim(),
+    insCode: document.getElementById('e-ins').value.trim(),
+    insName: document.getElementById('e-insname').value.trim(),
+  };
+  if (!body.code) { setMsg('editMsg', '✗ 编码不能为空', 'err'); return; }
+  await jfetch('/api/admin/mapping-update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  editingMapId = null;
+  setMsg('editMsg', `✓ #${id} 已保存`, 'ok');
+  loadStatus();
+  loadMapping();
+}
+
+function pageMove(d) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const next = Math.min(pages, Math.max(1, curPage + d));
+  if (next !== curPage) { curPage = next; loadMapping(); }
+}
+
+async function toggleGray(id, gray) {
+  const r = await jfetch('/api/admin/mapping-gray', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, gray }) });
+  setMsg('editMsg', `✓ #${id} 已${gray ? '标注为灰码' : '取消灰码'}，当前灰码 ${r.stats.gray.toLocaleString()} 个`, 'ok');
+  loadStatus();
+  loadMapping();
+}
+
+async function delMapping(id) {
+  if (!confirm(`确认删除映射 #${id}？`)) return;
+  await jfetch('/api/admin/mapping-delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+  setMsg('editMsg', `✓ #${id} 已删除`, 'ok');
+  loadStatus();
+  loadMapping();
+}
+
+async function addMapping() {
+  const code = document.getElementById('addCode').value.trim();
+  if (!code) { setMsg('editMsg', '✗ ICD-10 编码必填', 'err'); return; }
+  const r = await jfetch('/api/admin/mapping-add', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      code,
+      name: document.getElementById('addName').value.trim(),
+      insCode: document.getElementById('addIns').value.trim(),
+      insName: document.getElementById('addInsName').value.trim(),
+      note: document.getElementById('addNote').value.trim(),
+    }),
+  });
+  if (r.error) { setMsg('editMsg', '✗ ' + r.error, 'err'); return; }
+  setMsg('editMsg', `✓ 已添加 #${r.id}`, 'ok');
+  ['addCode','addName','addIns','addInsName','addNote'].forEach(id => document.getElementById(id).value = '');
+  loadStatus();
+  loadMapping(1);
+}
+
+async function testTranslate() {
+  const code = document.getElementById('testCode').value.trim();
+  if (!code) return;
+  const t = await jfetch('/api/translate?code=' + encodeURIComponent(code));
+  setMsg('editMsg',
+    t.matched
+      ? (t.gray
+          ? `⬤ ${code} 命中灰码（不映射，保留原码）｜国临版名称: ${t.icd10Name || '—'}`
+          : `✓ ${t.from} → ${t.to}${t.via === 'prefix' ? '（前缀匹配）' : ''}｜医保名称: ${t.insuranceName || '—'}`)
+      : `✗ ${code} 未命中映射表`,
+    t.matched && !t.gray ? 'ok' : 'err');
+}
+
+// ---------- 病种库列表（sheet tab + 行内编辑） ----------
+let libTab = 'bingxiang', libPage = 1, libTotal = 0, libPageSize = 50;
+let libColumns = [], libKeyField = 'seq', libEditing = null, libAdding = false;
+
+async function loadLibTabs() {
+  const r = await jfetch('/api/admin/diseases-counts');
+  document.getElementById('libTabs').innerHTML = Object.entries(r.tabs).map(([tab, s]) =>
+    `<a class="${tab === libTab ? 'on' : ''}" onclick="switchLibTab('${tab}')">${esc(s.label)}<b>${s.total.toLocaleString()}</b></a>`).join('');
+  // ② 区分表导入的区段下拉（保持已选值）
+  const sel = document.getElementById('diseasesTab');
+  if (sel && !sel.dataset.ready) {
+    sel.innerHTML = '<option value="">— 选择区段 —</option>' + Object.entries(r.tabs).map(([tab, s]) =>
+      `<option value="${tab}">${esc(s.label)}（${s.total.toLocaleString()}）</option>`).join('');
+    sel.dataset.ready = '1';
+  }
+}
+
+function switchLibTab(t) {
+  libTab = t; libPage = 1; libEditing = null; libAdding = false;
+  document.getElementById('libQ').value = '';
+  loadLibTabs();
+  loadLib(1);
+}
+
+function libCellHtml(col, value, mode) {
+  // mode: 'view' | 'edit' | 'add'
+  const v = value ?? '';
+  if (mode === 'view') {
+    const s = String(v);
+    return `<td class="${col.mono ? 'mono ' : ''}ellip" title="${esc(s) || ''}">${esc(v) || '—'}</td>`;
+  }
+  if (mode === 'edit' && col.immutable) return `<td${col.mono ? ' class="mono"' : ''}>${esc(v)}</td>`;
+  if (mode === 'add' && col.key === 'seq') return `<td style="color:var(--faint)">自动</td>`;
+  if (col.bool) {
+    return `<td><select id="le-${col.key}"><option${String(v) === '是' ? ' selected' : ''}>是</option><option${String(v) !== '是' ? ' selected' : ''}>否</option></select></td>`;
+  }
+  return `<td><input type="text" id="le-${col.key}" value="${esc(v)}"></td>`;
+}
+
+async function loadLib(page) {
+  libPage = page || libPage;
+  const q = document.getElementById('libQ').value.trim();
+  const r = await jfetch(`/api/admin/diseases?tab=${libTab}&q=${encodeURIComponent(q)}&page=${libPage}&pageSize=${libPageSize}`);
+  libTotal = r.total; libColumns = r.columns; libKeyField = r.keyField;
+
+  document.getElementById('libHead').innerHTML = '<tr>' +
+    r.columns.map(c => `<th${c.width ? ` style="width:${c.width}px"` : ''}>${esc(c.label)}</th>`).join('') +
+    '<th style="width:150px">操作</th></tr>';
+
+  const opCell = (saveFn, cancelFn) => `
+    <td>
+      <button class="mini" style="background:var(--primary);color:#fff;border-color:var(--primary)" onclick="${saveFn}">保存</button>
+      <button class="mini" onclick="${cancelFn}">取消</button>
+    </td>`;
+
+  let body = '';
+  if (libAdding) {
+    body += '<tr style="background:var(--primary-soft)">' +
+      r.columns.map(c => libCellHtml(c, '', 'add')).join('') +
+      opCell('saveLibAdd()', 'cancelLibAdd()') + '</tr>';
+  }
+  if (!r.rows.length && !libAdding) {
+    body = `<tr><td colspan="${r.columns.length + 1}" style="text-align:center;color:var(--faint);padding:28px">暂无数据${q ? '（无匹配）' : ''}</td></tr>`;
+  }
+  body += r.rows.map(row => {
+    const key = row[r.keyField];
+    if (libEditing !== null && String(libEditing) === String(key)) {
+      return '<tr style="background:var(--primary-soft)">' +
+        r.columns.map(c => libCellHtml(c, row[c.key], 'edit')).join('') +
+        opCell(`saveLibEdit('${esc(String(key))}')`, 'cancelLibEdit()') + '</tr>';
+    }
+    return '<tr>' +
+      r.columns.map(c => libCellHtml(c, row[c.key], 'view')).join('') +
+      `<td>
+        <button class="mini" onclick="startLibEdit('${esc(String(key))}')">编辑</button>
+        <button class="mini danger" onclick="delLib('${esc(String(key))}')">删除</button>
+      </td></tr>`;
+  }).join('');
+  document.getElementById('libBody').innerHTML = body;
+
+  const pages = Math.max(1, Math.ceil(libTotal / libPageSize));
+  document.getElementById('libPageInfo').textContent = `${r.label} · 第 ${libPage} / ${pages} 页 · 共 ${libTotal.toLocaleString()} 条`;
+}
+
+function libPageMove(d) {
+  const pages = Math.max(1, Math.ceil(libTotal / libPageSize));
+  const next = Math.min(pages, Math.max(1, libPage + d));
+  if (next !== libPage) { libPage = next; loadLib(); }
+}
+
+function startLibEdit(key) { libEditing = key; libAdding = false; loadLib(); }
+function cancelLibEdit() { libEditing = null; loadLib(); }
+function startLibAdd() { libAdding = true; libEditing = null; document.getElementById('libQ').value = ''; loadLib(1); }
+function cancelLibAdd() { libAdding = false; loadLib(); }
+
+function readLibRow() {
+  const row = {};
+  for (const c of libColumns) {
+    if (c.key === 'seq' && libAdding) continue; // 新增时序号自动
+    if (libEditing !== null && c.immutable && libAdding === false && c.key !== 'code') continue;
+    const el = document.getElementById('le-' + c.key);
+    if (el) row[c.key] = el.value;
+  }
+  return row;
+}
+
+async function saveLibEdit(key) {
+  try {
+    await jfetch('/api/admin/diseases-update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: libTab, key, row: readLibRow() }),
+    });
+    libEditing = null;
+    setMsg('libMsg', `✓ 已保存`, 'ok');
+    loadLibTabs();
+    loadLib();
+  } catch (e) { setMsg('libMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function saveLibAdd() {
+  try {
+    const r = await jfetch('/api/admin/diseases-add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: libTab, row: readLibRow() }),
+    });
+    libAdding = false;
+    setMsg('libMsg', `✓ 已新增（${libKeyField === 'seq' ? '序号 ' + r.key : r.key}）`, 'ok');
+    loadLibTabs();
+    loadStatus();
+    loadLib();
+  } catch (e) { setMsg('libMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function delLib(key) {
+  if (!confirm(`确认删除 ${libTab === 'excludedDiags' || libTab === 'excludedProcs' ? '编码 ' : '序号 '}${key}？删除立即生效。`)) return;
+  try {
+    await jfetch('/api/admin/diseases-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: libTab, key }),
+    });
+    setMsg('libMsg', `✓ 已删除`, 'ok');
+    loadLibTabs();
+    loadStatus();
+    loadLib();
+  } catch (e) { setMsg('libMsg', '✗ ' + e.message, 'err'); }
+}
+
+// ---------- 立项指南（导入 + 明细维护） ----------
+let lxTab = '', lxPage = 1, lxTotal = 0, lxPageSize = 50, lxColumns = [], lxKeyField = 'id', lxEditing = null, lxAdding = false;
+
+async function loadLxTabs() {
+  const r = await jfetch('/api/lixiang/sections');
+  const entries = Object.entries(r.tabs || {});
+  lxTabsCache = entries;
+  fillLxGuideSel();
+  if (!lxTab && entries.length) lxTab = entries[0][0];
+  document.getElementById('lxLibTabs').innerHTML = entries.map(([tab, s]) =>
+    `<a class="${tab === lxTab ? 'on' : ''}" onclick="switchLxTab('${tab}')">${esc(s.label)}<b>${s.total.toLocaleString()}</b></a>`).join('');
+  const sel = document.getElementById('lxTabSel');
+  if (sel && !sel.dataset.ready) {
+    sel.innerHTML = '<option value="">— 整簿导入（按 sheet 自动分区段）—</option>' + entries.map(([tab, s]) =>
+      `<option value="${tab}">${esc(s.label)}（${s.total.toLocaleString()}）</option>`).join('');
+    sel.dataset.ready = '1';
+  }
+  const total = entries.reduce((s, [, v]) => s + v.total, 0);
+  // 概览页「立项指南各区段条数」胶囊
+  document.getElementById('dashLixiangPills').innerHTML = entries.length
+    ? entries.map(([, s]) => `<span>${esc(s.label)}<b>${s.total.toLocaleString()}</b></span>`).join('')
+    : '<span>暂无数据</span>';
+  document.getElementById('lxMeta').innerHTML = entries.length
+    ? `当前库：共 <b>${entries.length}</b> 类指南、<b>${total.toLocaleString()}</b> 个价格项目`
+    : '尚未导入立项指南';
+}
+
+function switchLxTab(t) {
+  lxTab = t; lxPage = 1; lxEditing = null; lxAdding = false;
+  document.getElementById('lxQ').value = '';
+  loadLxTabs();
+  loadLx(1);
+}
+
+async function importLixiang() {
+  const f = document.getElementById('lxFile').files[0];
+  if (!f) { alert('请选择立项指南 Excel'); return; }
+  const tab = document.getElementById('lxTabSel').value;
+  const mode = document.querySelector('input[name=lxMode]:checked').value;
+  const btn = document.getElementById('btnLx');
+  btn.disabled = true;
+  setMsg('lxImportMsg', `正在解析导入（${tab ? '仅选中区段' : '整簿'}·${mode === 'replace' ? '覆盖' : '追加/更新'}）…`, 'busy');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('mode', mode);
+  fd.append('tab', tab);
+  try {
+    const r = await jfetch('/api/admin/lixiang-import', { method: 'POST', body: fd });
+    const total = Object.values(r.report || {}).reduce((s, x) => s + (x.added || 0) + (x.updated || 0), 0);
+    const names = Object.entries(r.report || {}).map(([k, v]) => v.label).filter(Boolean);
+    setMsg('lxImportMsg', `✓ 导入完成：涉及 ${names.length} 类指南、处理 ${total.toLocaleString()} 条；当前共 ${r.total.toLocaleString()} 条${names.length <= 8 ? '（' + names.join('、') + '）' : ''}`, 'ok');
+    document.getElementById('lxTabSel').dataset.ready = ''; // 重新加载区段下拉
+    loadLxTabs().then(() => loadLx(1));
+  } catch (e) {
+    setMsg('lxImportMsg', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function downloadLxTpl() {
+  const tab = document.getElementById('lxTabSel').value;
+  location.href = '/api/admin/lixiang-template' + (tab ? '?tab=' + encodeURIComponent(tab) : '');
+}
+
+function lxCellHtml(col, value, mode) {
+  const v = value ?? '';
+  if (mode === 'view') {
+    const s = String(v);
+    return `<td class="${col.mono ? 'mono ' : ''}ellip" title="${esc(s) || ''}">${esc(v) || '—'}</td>`;
+  }
+  if (mode === 'edit' && col.immutable) return `<td${col.mono ? ' class="mono"' : ''}>${esc(v)}</td>`;
+  return `<td><input type="text" id="le-${col.key}" value="${esc(v)}"></td>`;
+}
+
+async function loadLx(page) {
+  lxPage = page || lxPage;
+  const q = document.getElementById('lxQ').value.trim();
+  const r = await jfetch(`/api/lixiang/items?tab=${lxTab}&q=${encodeURIComponent(q)}&page=${lxPage}&pageSize=${lxPageSize}`);
+  lxTotal = r.total; lxColumns = r.columns; lxKeyField = r.keyField;
+  document.getElementById('lxHead').innerHTML = '<tr>' +
+    r.columns.map(c => `<th${c.width ? ` style="width:${c.width}px"` : ''}>${esc(c.label)}</th>`).join('') +
+    '<th style="width:150px">操作</th></tr>';
+  const opCell = (saveFn, cancelFn) => `
+    <td>
+      <button class="mini" style="background:var(--primary);color:#fff;border-color:var(--primary)" onclick="${saveFn}">保存</button>
+      <button class="mini" onclick="${cancelFn}">取消</button>
+    </td>`;
+  let body = '';
+  if (lxAdding) {
+    body += '<tr style="background:var(--primary-soft)">' +
+      r.columns.map(c => lxCellHtml(c, '', 'add')).join('') +
+      opCell('saveLxAdd()', 'cancelLxAdd()') + '</tr>';
+  }
+  if (!r.rows.length && !lxAdding) {
+    body = `<tr><td colspan="${r.columns.length + 1}" style="text-align:center;color:var(--faint);padding:28px">暂无数据${q ? '（无匹配）' : ''}</td></tr>`;
+  }
+  body += r.rows.map(row => {
+    const key = row[r.keyField];
+    if (lxEditing !== null && String(lxEditing) === String(key)) {
+      return '<tr style="background:var(--primary-soft)">' +
+        r.columns.map(c => lxCellHtml(c, row[c.key], 'edit')).join('') +
+        opCell(`saveLxEdit('${esc(String(key))}')`, 'cancelLxEdit()') + '</tr>';
+    }
+    return '<tr>' +
+      r.columns.map(c => lxCellHtml(c, row[c.key], 'view')).join('') +
+      `<td>
+        <button class="mini" onclick="startLxEdit('${esc(String(key))}')">编辑</button>
+        <button class="mini danger" onclick="delLx('${esc(String(key))}')">删除</button>
+      </td></tr>`;
+  }).join('');
+  document.getElementById('lxBody').innerHTML = body;
+  const pages = Math.max(1, Math.ceil(lxTotal / lxPageSize));
+  document.getElementById('lxPageInfo').textContent = `${r.label} · 第 ${lxPage} / ${pages} 页 · 共 ${lxTotal.toLocaleString()} 条`;
+}
+
+function lxPageMove(d) {
+  const pages = Math.max(1, Math.ceil(lxTotal / lxPageSize));
+  const next = Math.min(pages, Math.max(1, lxPage + d));
+  if (next !== lxPage) { lxPage = next; loadLx(); }
+}
+
+function startLxEdit(key) { lxEditing = key; lxAdding = false; loadLx(); }
+function cancelLxEdit() { lxEditing = null; loadLx(); }
+function startLxAdd() { lxAdding = true; lxEditing = null; document.getElementById('lxQ').value = ''; loadLx(1); }
+function cancelLxAdd() { lxAdding = false; loadLx(); }
+
+function readLxRow() {
+  const row = {};
+  for (const c of lxColumns) {
+    if (lxEditing === null && c.key === 'seq' && lxAdding) { /* 新增时序号也允许手填 */ }
+    const el = document.getElementById('le-' + c.key);
+    if (el) row[c.key] = el.value;
+  }
+  return row;
+}
+
+async function saveLxEdit(key) {
+  try {
+    await jfetch('/api/admin/lixiang-update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: lxTab, key, row: readLxRow() }),
+    });
+    lxEditing = null;
+    setMsg('lxMsg', '✓ 已保存', 'ok');
+    loadLxTabs();
+    loadLx();
+  } catch (e) { setMsg('lxMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function saveLxAdd() {
+  try {
+    const r = await jfetch('/api/admin/lixiang-add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: lxTab, row: readLxRow() }),
+    });
+    lxAdding = false;
+    setMsg('lxMsg', '✓ 已新增', 'ok');
+    loadLxTabs();
+    loadLx();
+  } catch (e) { setMsg('lxMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function delLx(key) {
+  if (!confirm(`确认删除记录 #${key}？`)) return;
+  try {
+    await jfetch('/api/admin/lixiang-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: lxTab, key }),
+    });
+    setMsg('lxMsg', '✓ 已删除', 'ok');
+    loadLxTabs();
+    loadLx();
+  } catch (e) { setMsg('lxMsg', '✗ ' + e.message, 'err'); }
+}
+
+// ---------- 解读辅导（导入 + 期管理） ----------
+async function loadJdMeta() {
+  try {
+    const r = await jfetch('/api/lixiang/jiedu');
+    const issues = r.issues || [];
+    document.getElementById('jdMeta').innerHTML = issues.length
+      ? `当前解读库：<b>${issues.length}</b> 期、共 <b>${r.total.toLocaleString()}</b> 条问答`
+      : '尚未导入解读辅导';
+    document.getElementById('jdIssueChips').innerHTML = issues.map((x) =>
+      `<a class="on" title="点击删除第${x.issue}期" onclick="deleteJdIssue(${x.issue})">第${x.issue}期（${x.total}）<span style="opacity:.65"> ✕</span></a>`).join('');
+  } catch { /* 忽略 */ }
+}
+
+async function importJiedu() {
+  const f = document.getElementById('jdFile').files[0];
+  if (!f) { alert('请选择解读辅导文档（doc/docx/wps/txt）'); return; }
+  const mode = document.querySelector('input[name=jdMode]:checked').value;
+  const btn = document.getElementById('btnJd');
+  btn.disabled = true;
+  setMsg('jdImportMsg', '正在解析文档（doc/wps 需调用本机 Python 解析，可能需数秒）…', 'busy');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('mode', mode);
+  try {
+    const r = await jfetch('/api/admin/jiedu-import', { method: 'POST', body: fd });
+    setMsg('jdImportMsg', `✓ 导入完成：${mode === 'merge' ? '合并' : '替换'}新增 ${r.added} 条、更新 ${r.updated} 条；当前共 ${r.issues} 期 / ${r.total.toLocaleString()} 条问答`, 'ok');
+    document.getElementById('jdFile').value = '';
+    loadJdMeta();
+  } catch (e) {
+    setMsg('jdImportMsg', '✗ ' + e.message, 'err');
+  }
+  btn.disabled = false;
+}
+
+async function deleteJdIssue(issue) {
+  if (!confirm(`确认删除第${issue}期全部解读问答？`)) return;
+  try {
+    const r = await jfetch('/api/admin/jiedu-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issue }) });
+    setMsg('jdImportMsg', `✓ 已删除第${issue}期 ${r.removed} 条，剩余 ${r.total} 条`, 'ok');
+    loadJdMeta();
+  } catch (e) {
+    setMsg('jdImportMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+// ---------- 德州物价 ----------
+let dzPage = 1, dzTotal = 0, dzPageSize = 50, dzColumns = [], dzEditing = null, dzAdding = false;
+let dzBatches = [], dzDocs = [];
+
+/** 统计卡：可由 status（概览）或增删改/导入的返回直接驱动 */
+function renderDzStats(st) {
+  st = st || {};
+  document.getElementById('dzStats').innerHTML = `
+    <div class="stat c-primary"><div class="num">${(st.total ?? 0).toLocaleString()}</div><div class="lbl">项目总数</div><div class="hint">${st.batchCount ?? 0} 批 · ${st.categoryCount ?? 0} 类</div></div>
+    <div class="stat c-green"><div class="num">${(st.main ?? 0).toLocaleString()}</div><div class="lbl">主项目</div><div class="hint">main</div></div>
+    <div class="stat c-orange"><div class="num">${(st.add ?? 0).toLocaleString()}</div><div class="lbl">加收项</div><div class="hint">add</div></div>
+    <div class="stat c-purple"><div class="num">${(st.ext ?? 0).toLocaleString()}</div><div class="lbl">扩展项</div><div class="hint">ext</div></div>
+    <div class="stat c-teal"><div class="num">${(st.insured ?? 0).toLocaleString()}</div><div class="lbl">医保支付</div><div class="hint">可报销</div></div>
+    <div class="stat c-gray"><div class="num">${st.usageCovered ?? 0}/${st.usageCategories ?? 0}</div><div class="lbl">使用说明覆盖</div><div class="hint">${(st.usageEntries ?? 0).toLocaleString()} 条</div></div>`;
+  document.getElementById('dzMeta').innerHTML = st.importedAt
+    ? `导入时间：${fmtTime(st.importedAt)}　数据来源：<b>${esc(st.source || '—')}</b><br>数据文件：<b>data/dezhou-price.json</b>`
+    : '尚未导入德州物价数据（可用上方「导入模板」整理后导入）';
+}
+
+async function loadDzTabs() {
+  const r = await jfetch('/api/admin/dezhou-batches');
+  dzBatches = r.batches || [];
+  dzDocs = r.docs || [];
+  fillDzSelects();
+  renderDzChips();
+}
+
+function renderDzChips() {
+  const cur = document.getElementById('dzDocFilter').value;
+  const all = dzBatches.reduce((s, b) => s + b.rows, 0);
+  document.getElementById('dzBatchChips').innerHTML =
+    `<a class="${cur === '' ? 'on' : ''}" onclick="pickDzDoc('')">全部批次<b>${all.toLocaleString()}</b></a>` +
+    dzBatches.map(b => `<a class="${cur === b.doc ? 'on' : ''}" title="执行日期 ${esc(b.exec) || '—'}${b.scope ? '｜' + esc(b.scope) : ''}" onclick="pickDzDoc('${esc(b.doc)}')">${esc(b.doc)}<b>${b.rows.toLocaleString()}</b></a>`).join('');
+}
+
+function fillDzSelects() {
+  const docOpts = dzDocs.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  const setOpts = (id, head, opts) => {
+    const el = document.getElementById(id);
+    const old = el.value;
+    el.innerHTML = head + opts;
+    el.value = old;   // 旧值不在新列表时浏览器自动置空
+  };
+  setOpts('dzDocFilter', '<option value="">全部文号</option>', docOpts);
+  setOpts('dzDocSel', '<option value="">（不清空，按文件中文号）</option>', docOpts);
+  setOpts('dzUsageDoc', '<option value="">— 选择文号 —</option>', docOpts);
+  // 类别下拉跟随当前筛选文号
+  const doc = document.getElementById('dzDocFilter').value;
+  const cats = [...new Set(dzBatches.filter(b => !doc || b.doc === doc)
+    .flatMap(b => b.categories.map(c => c.name)))];
+  setOpts('dzCatFilter', '<option value="">全部类别</option>',
+    cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join(''));
+  // 「类别使用说明」默认选中文号，省得每次手点
+  const ud = document.getElementById('dzUsageDoc');
+  if (!ud.value && dzDocs.length) ud.value = dzDocs[0];
+}
+
+function pickDzDoc(doc) {
+  document.getElementById('dzDocFilter').value = doc;
+  fillDzSelects();
+  renderDzChips();
+  loadDz(1);
+}
+
+function dzCellHtml(col, value, mode) {
+  const v = value ?? '';
+  if (mode === 'view') {
+    const s = String(v);
+    return `<td class="${col.mono ? 'mono ' : ''}ellip" title="${esc(s)}">${esc(v) || '—'}</td>`;
+  }
+  if (col.key === 'kind')
+    return `<td><select id="le-${col.key}">${['main', 'add', 'ext'].map(k =>
+      `<option value="${k}"${String(v) === k ? ' selected' : ''}>${k}</option>`).join('')}</select></td>`;
+  if (col.key === 'insurance')
+    return `<td><select id="le-${col.key}"><option${String(v) === '是' ? ' selected' : ''}>是</option><option${String(v) !== '是' ? ' selected' : ''}>否</option></select></td>`;
+  return `<td><input type="text" id="le-${col.key}" value="${esc(v)}"></td>`;
+}
+
+async function loadDz(page) {
+  dzPage = page || dzPage;
+  const doc = document.getElementById('dzDocFilter').value;
+  const cat = document.getElementById('dzCatFilter').value;
+  const kind = document.getElementById('dzKindFilter').value;
+  const ins = document.getElementById('dzInsFilter').value;
+  const level = document.getElementById('dzLevelFilter').value;
+  const q = document.getElementById('dzQ').value.trim();
+  const r = await jfetch(`/api/admin/dezhou?doc=${encodeURIComponent(doc)}&category=${encodeURIComponent(cat)}&kind=${kind}&insurance=${encodeURIComponent(ins)}&level=${encodeURIComponent(level)}&q=${encodeURIComponent(q)}&page=${dzPage}&pageSize=${dzPageSize}`);
+  dzTotal = r.total; dzColumns = r.columns;
+
+  document.getElementById('dzHead').innerHTML = '<tr>' +
+    r.columns.map(c => `<th${c.width ? ` style="width:${c.width}px"` : ''}>${esc(c.label)}</th>`).join('') +
+    '<th style="width:140px">操作</th></tr>';
+
+  const opCell = (saveFn, cancelFn) => `
+    <td>
+      <button class="mini" style="background:var(--primary);color:#fff;border-color:var(--primary)" onclick="${saveFn}">保存</button>
+      <button class="mini" onclick="${cancelFn}">取消</button>
+    </td>`;
+
+  let body = '';
+  if (dzAdding) {
+    body += '<tr style="background:var(--primary-soft)">' +
+      r.columns.map(c => dzCellHtml(c, '', 'add')).join('') + opCell('saveDzAdd()', 'cancelDzAdd()') + '</tr>';
+  }
+  if (!r.rows.length && !dzAdding) {
+    body = `<tr><td colspan="${r.columns.length + 1}" style="text-align:center;color:var(--faint);padding:28px">${(q || doc || cat) ? '无匹配结果' : '暂无数据，请先导入德州物价表'}</td></tr>`;
+  }
+  body += r.rows.map(row => {
+    const key = row.id;
+    if (dzEditing !== null && String(dzEditing) === String(key)) {
+      return '<tr style="background:var(--primary-soft)">' +
+        r.columns.map(c => dzCellHtml(c, row[c.key], 'edit')).join('') +
+        opCell(`saveDzEdit('${key}')`, 'cancelDzEdit()') + '</tr>';
+    }
+    return '<tr>' + r.columns.map(c => dzCellHtml(c, row[c.key], 'view')).join('') +
+      `<td>
+        <button class="mini" onclick="startDzEdit('${key}')">编辑</button>
+        <button class="mini danger" onclick="delDz('${key}')">删除</button>
+      </td></tr>`;
+  }).join('');
+  document.getElementById('dzBody').innerHTML = body;
+
+  const pages = Math.max(1, Math.ceil(dzTotal / dzPageSize));
+  document.getElementById('dzPageInfo').textContent = `${r.label} · 第 ${dzPage} / ${pages} 页 · 共 ${dzTotal.toLocaleString()} 条`;
+}
+
+function dzPageMove(d) {
+  const pages = Math.max(1, Math.ceil(dzTotal / dzPageSize));
+  const next = Math.min(pages, Math.max(1, dzPage + d));
+  if (next !== dzPage) { dzPage = next; loadDz(); }
+}
+
+function startDzEdit(id) { dzEditing = id; dzAdding = false; loadDz(); }
+function cancelDzEdit() { dzEditing = null; loadDz(); }
+function startDzAdd() { dzAdding = true; dzEditing = null; document.getElementById('dzQ').value = ''; loadDz(1); }
+function cancelDzAdd() { dzAdding = false; loadDz(); }
+
+function readDzRow() {
+  const row = {};
+  for (const c of dzColumns) {
+    const el = document.getElementById('le-' + c.key);
+    if (el) row[c.key] = el.value;
+  }
+  return row;
+}
+
+async function saveDzEdit(id) {
+  try {
+    const r = await jfetch('/api/admin/dezhou-update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, row: readDzRow() }),
+    });
+    dzEditing = null;
+    setMsg('dzMsg', '✓ 已保存', 'ok');
+    renderDzStats(r.stats);
+    loadDzTabs();
+    loadDz();
+  } catch (e) { setMsg('dzMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function saveDzAdd() {
+  try {
+    const r = await jfetch('/api/admin/dezhou-add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ row: readDzRow() }),
+    });
+    dzAdding = false;
+    setMsg('dzMsg', `✓ 已新增 #${r.key}`, 'ok');
+    renderDzStats(r.stats);
+    loadDzTabs();
+    loadDz();
+  } catch (e) { setMsg('dzMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function delDz(id) {
+  if (!confirm(`确认删除项目 #${id}？删除立即生效。`)) return;
+  try {
+    const r = await jfetch('/api/admin/dezhou-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    setMsg('dzMsg', '✓ 已删除', 'ok');
+    renderDzStats(r.stats);
+    loadDzTabs();
+    loadDz();
+  } catch (e) { setMsg('dzMsg', '✗ ' + e.message, 'err'); }
+}
+
+async function importDezhou() {
+  const f = document.getElementById('dzFile').files[0];
+  if (!f) { alert('请选择德州物价 Excel（可先点「导入模板」）'); return; }
+  const mode = document.querySelector('input[name=dzMode]:checked').value;
+  const doc = document.getElementById('dzDocSel').value;
+  const btn = document.getElementById('btnDz');
+  btn.disabled = true;
+  setMsg('dzImportMsg', `正在解析导入（${mode === 'replace' ? '覆盖' : '追加/更新'}${doc ? '·' + doc : ''}）…`, 'busy');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('mode', mode);
+  if (doc) fd.append('doc', doc);
+  try {
+    const r = await jfetch('/api/admin/dezhou-import', { method: 'POST', body: fd });
+    let txt = `✓ 导入完成：解析 ${r.parsed.toLocaleString()} 行，新增 ${r.added.toLocaleString()}，更新 ${r.updated.toLocaleString()}`;
+    if (r.skipped) txt += `，跳过 ${r.skipped.toLocaleString()}`;
+    txt += `；当前共 ${r.total.toLocaleString()} 条`;
+    setMsg('dzImportMsg', txt, r.skipped ? 'err' : 'ok');
+    document.getElementById('dzFile').value = '';
+    renderDzStats(r.stats);
+    await loadDzTabs();
+    loadDz(1);
+  } catch (e) {
+    setMsg('dzImportMsg', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function exportDezhou() {
+  const p = new URLSearchParams({
+    doc: document.getElementById('dzDocFilter').value,
+    category: document.getElementById('dzCatFilter').value,
+    kind: document.getElementById('dzKindFilter').value,
+    q: document.getElementById('dzQ').value.trim(),
+  });
+  location.href = '/api/admin/dezhou-export?' + p.toString();
+}
+
+// ---------- 类别使用说明 ----------
+function fillUsageCats() {
+  const doc = document.getElementById('dzUsageDoc').value;
+  const cats = [...new Set(dzBatches.filter(b => b.doc === doc).flatMap(b => b.categories.map(c => c.name)))];
+  const el = document.getElementById('dzUsageCat');
+  el.innerHTML = cats.length
+    ? cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
+    : '<option value="">（该文号暂无类别）</option>';
+  loadUsage();
+}
+
+function loadUsage() {
+  const doc = document.getElementById('dzUsageDoc').value;
+  const cat = document.getElementById('dzUsageCat').value;
+  const b = dzBatches.find(x => x.doc === doc);
+  const c = b && b.categories.find(x => x.name === cat);
+  const list = (c && c.usage) || [];
+  document.getElementById('dzUsageText').value = list.join('\n');
+  setMsg('dzUsageMsg', c ? (list.length ? `当前 ${list.length} 条` : '（暂无，可粘贴补充）') : '', 'ok');
+}
+
+async function saveUsage() {
+  const doc = document.getElementById('dzUsageDoc').value;
+  const cat = document.getElementById('dzUsageCat').value;
+  if (!doc || !cat) { alert('请先选择文号与类别'); return; }
+  try {
+    const r = await jfetch('/api/admin/dezhou-usage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc, category: cat, usage: document.getElementById('dzUsageText').value }),
+    });
+    setMsg('dzUsageMsg', `✓ 已保存（${r.length} 条），前台选中该类即可见`, 'ok');
+    await loadDzTabs();
+    document.getElementById('dzUsageDoc').value = doc;
+    fillUsageCats();
+    document.getElementById('dzUsageCat').value = cat;
+    loadUsage();
+    renderDzStats(r.stats);
+  } catch (e) { setMsg('dzUsageMsg', '✗ ' + e.message, 'err'); }
+}
+
+// ---------- 类级使用说明维护 ----------
+let lxTabsCache = [];
+function fillLxGuideSel() {
+  const sel = document.getElementById('lxGuideSel');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = lxTabsCache.map(([tab, s]) => `<option value="${tab}" ${tab === cur ? 'selected' : ''}>${esc(s.label)}</option>`).join('');
+}
+
+async function loadLxGuideUsage() {
+  const tab = document.getElementById('lxGuideSel').value;
+  if (!tab) return;
+  try {
+    const r = await jfetch(`/api/lixiang/items?tab=${tab}&pageSize=1`);
+    document.getElementById('lxGuideUsage').value = r.guideUsage || '';
+    setMsg('lxGuideMsg', r.guideUsage ? `当前 ${r.guideUsage.length} 字` : '（暂无，可粘贴补充）', 'ok');
+  } catch (e) {
+    setMsg('lxGuideMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+async function saveLxGuideUsage() {
+  const tab = document.getElementById('lxGuideSel').value;
+  if (!tab) { alert('请选择指南区段'); return; }
+  try {
+    const r = await jfetch('/api/admin/lixiang-guide-usage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab, usage: document.getElementById('lxGuideUsage').value }),
+    });
+    setMsg('lxGuideMsg', `✓ 已保存（${r.length} 字），前台选中该类即可见`, 'ok');
+  } catch (e) {
+    setMsg('lxGuideMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+// ---------- 系统设置 ----------
+let __settingsLoaded = false;
+// 现有数据里出现过的取值，供「参数表留空时预填」与「从现有数据提取」使用
+let __lxInUse = { cats: [], units: [] };
+
+async function loadSettings(force) {
+  if (__settingsLoaded && !force) return;
+  try {
+    const s = await jfetch('/api/admin/settings');
+    document.getElementById('cfAppName').value = s.appName || '';
+    document.getElementById('cfAppSub').value = s.appSubName || '';
+    document.getElementById('cfLoginOn').checked = s.loginEnabled !== false;
+    document.getElementById('cfUser').value = s.adminUser || '';
+    document.getElementById('cfPass1').value = '';
+    document.getElementById('cfPass2').value = '';
+    fillLxParams(s.lixiangCategories || [], s.lixiangUnits || [],
+                 s.categoriesInUse || [], s.unitsInUse || []);
+    // 数据分发共享口令：明文回填（管理员要能核对客户端里填的是不是同一个），默认遮起来
+    const sh = document.getElementById('cfShare');
+    sh.value = s.shareToken || '';
+    sh.type = 'password';
+    document.getElementById('cfShareNote').textContent = s.hasShareToken
+      ? '当前已启用共享口令：客户端不带口令拉数据会被拒（401）。'
+      : '当前未启用 —— 局域网内任何机器都能拉取数据文件。';
+    const w = document.getElementById('cfPassWarn');
+    if (s.isDefaultPassword) {
+      w.style.display = 'block';
+      w.textContent = `⚠ 当前口令仍是出厂默认值（${s.defaultUser} / admin123）——局域网里谁都能猜出来，建议立刻改掉。`;
+    } else {
+      w.style.display = 'none';
+    }
+    setMsg('cfAppMsg', '已载入当前设置', 'ok');
+    __settingsLoaded = true;
+  } catch (e) {
+    setMsg('cfAppMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+/** 参数表留空时用「现有数据里的取值」预填 —— 与桌面客户端 AdminSettingsView.LoadParams 一致 */
+function fillLxParams(cats, units, catsInUse, unitsInUse) {
+  __lxInUse = { cats: catsInUse, units: unitsInUse };
+  const hasOwn = cats.length > 0 || units.length > 0;
+  document.getElementById('cfCats').value = (cats.length ? cats : catsInUse).join('\n');
+  document.getElementById('cfUnits').value = (units.length ? units : unitsInUse).join('\n');
+  const note = document.getElementById('cfLxNote');
+  if (hasOwn) {
+    note.textContent = '已配置参数表，下拉框只出现这里的值（编辑框里仍可自由输入新值）。';
+  } else if (catsInUse.length || unitsInUse.length) {
+    note.textContent = `尚未配置参数表 —— 下面显示的是现有数据里的取值（类别 ${catsInUse.length} 项 · 单位 ${unitsInUse.length} 项）；`
+      + '可直接在此基础上增删后点「保存」，保持全空则继续自动取现有数据。';
+  } else {
+    note.textContent = '现有数据里还没有类别 / 单位取值，可手工输入后保存。';
+  }
+}
+
+/** 把现有数据里的取值灌进两个编辑框（清空后再点保存即恢复"自动取值"） */
+function extractLxParams() {
+  document.getElementById('cfCats').value = __lxInUse.cats.join('\n');
+  document.getElementById('cfUnits').value = __lxInUse.units.join('\n');
+  setMsg('cfLxMsg', `已提取现有数据取值（类别 ${__lxInUse.cats.length} 项 · 单位 ${__lxInUse.units.length} 项），点「保存」生效`, 'ok');
+}
+
+async function saveApp() {
+  try {
+    const r = await jfetch('/api/admin/settings-app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appName: document.getElementById('cfAppName').value,
+        appSubName: document.getElementById('cfAppSub').value,
+      }),
+    });
+    document.getElementById('brandName').textContent = r.appName;
+    document.getElementById('brandMark').textContent = r.logoText || 'D3';
+    document.getElementById('brandSub').textContent = r.appSubName || '管理控制台';
+    document.title = r.appName + ' · 管理控制台';
+    setMsg('cfAppMsg', `✓ 已保存为「${r.appName}」`, 'ok');
+  } catch (e) {
+    setMsg('cfAppMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+async function saveLogin() {
+  const on = document.getElementById('cfLoginOn').checked;
+  const p1 = document.getElementById('cfPass1').value;
+  const p2 = document.getElementById('cfPass2').value;
+  if (p1 && p1.length < 6) { setMsg('cfLoginMsg', '✗ 新口令至少 6 位', 'err'); return; }
+  if (p1 !== p2) { setMsg('cfLoginMsg', '✗ 两次输入的口令不一致', 'err'); return; }
+  if (!on && !confirm('关闭登录校验后，局域网内任何人都能导入数据、删除物价。确定关闭？')) return;
+  try {
+    const r = await jfetch('/api/admin/settings-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loginEnabled: on,
+        user: document.getElementById('cfUser').value,
+        password: p1, password2: p2,
+      }),
+    });
+    document.getElementById('cfPass1').value = '';
+    document.getElementById('cfPass2').value = '';
+    __settingsLoaded = false;
+    await loadSession();          // 会话状态可能已变（开/关校验、改口令），回服务器取真实值
+    loadSettings(true);
+    setMsg('cfLoginMsg', r.passwordChanged ? '✓ 已保存，口令已更新' : '✓ 已保存', 'ok');
+  } catch (e) {
+    setMsg('cfLoginMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+async function saveLxParams() {
+  const lines = v => v.split('\n').map(x => x.trim()).filter(x => x.length > 0);
+  try {
+    const r = await jfetch('/api/admin/settings-lixiang', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        categories: lines(document.getElementById('cfCats').value),
+        units: lines(document.getElementById('cfUnits').value),
+      }),
+    });
+    const nc = (r.categories || []).length, nu = (r.units || []).length;
+    setMsg('cfLxMsg', (nc + nu) > 0
+      ? `✓ 已保存：项目类别 ${nc} 项 / 计价单位 ${nu} 项`
+      : '✓ 已清空，前台改为自动提取现有数据里的去重值', 'ok');
+    // 保存后回填逻辑相应变化（有参数表了 / 又清空了），重绘提示行
+    __settingsLoaded = false;
+    await loadSettings(true);
+  } catch (e) {
+    setMsg('cfLxMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+/** 共享口令明文 / 遮蔽切换 */
+function toggleShare() {
+  const el = document.getElementById('cfShare');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+async function saveShare() {
+  const el = document.getElementById('cfShare');
+  const token = el.value;
+  if (token && token.trim().length < 4) {
+    setMsg('cfShareMsg', '✗ 共享口令太短，建议至少 4 位', 'err');
+    return;
+  }
+  try {
+    const r = await jfetch('/api/admin/settings-share', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    setMsg('cfShareMsg', r.hasShareToken
+      ? '✓ 已启用共享口令 —— 客户端需在「数据更新」里填同一口令'
+      : '✓ 已清空 —— 分发接口不再校验口令', 'ok');
+    __settingsLoaded = false;
+    await loadSettings(true);
+  } catch (e) {
+    setMsg('cfShareMsg', '✗ ' + e.message, 'err');
+  }
+}
+
+// ---------- 消息推送 ----------
+// 后台编辑发布 → 写 data/notice.json → 前台 /api/notice 轮询取回。
+// 状态判定用服务器返回的 now（不用本机时钟），避免管理员电脑时间不准导致「待生效」显示错乱。
+let __ntItems = [];
+let __ntEditing = '';
+const NT_LV = { info: '一般', warn: '提醒', danger: '重要' };
+
+function ntLv(l) { return (l === 'warn' || l === 'danger') ? l : 'info'; }
+function ntLevel() {
+  const r = document.querySelector('input[name="ntLevel"]:checked');
+  return r ? r.value : 'info';
+}
+function ntRadio(v) {
+  const r = document.querySelector('input[name="ntLevel"][value="' + v + '"]');
+  if (r) r.checked = true;
+}
+function ntPeriod(n) {
+  return (n.startAt || n.endAt)
+    ? ((n.startAt || '立即').replace('T', ' ') + ' ~ ' + (n.endAt || '长期').replace('T', ' '))
+    : '立即 · 长期';
+}
+/** 状态：草稿 / 已过期 / 待生效 / 生效中（时间串格式固定，字典序即时间序） */
+function ntStatus(n, now) {
+  if (!n.enabled) return ['st-draft', '草稿'];
+  if (n.endAt && n.endAt < now) return ['st-exp', '已过期'];
+  if (n.startAt && n.startAt > now) return ['st-wait', '待生效'];
+  return ['st-on', '生效中'];
+}
+
+async function loadNotices() {
+  try {
+    const r = await jfetch('/api/admin/notices');
+    __ntItems = r.items || [];
+    const s = r.stats || {};
+    document.getElementById('ntStats').innerHTML = `
+      <div class="stat c-primary"><div class="num">${s.active ?? 0}</div><div class="lbl">生效中</div><div class="hint">前台当前可见</div></div>
+      <div class="stat c-orange"><div class="num">${s.scheduled ?? 0}</div><div class="lbl">待生效</div><div class="hint">到点自动出现</div></div>
+      <div class="stat c-gray"><div class="num">${s.draft ?? 0}</div><div class="lbl">草稿</div><div class="hint">仅后台可见</div></div>
+      <div class="stat c-purple"><div class="num">${s.pinned ?? 0}</div><div class="lbl">钉住</div><div class="hint">前台常驻横幅</div></div>
+      <div class="stat c-teal"><div class="num">${s.total ?? 0}</div><div class="lbl">合计</div><div class="hint">含已过期</div></div>`;
+    renderNoticeList(r.now || '');
+  } catch (e) {
+    setMsg('ntMsg2', '✗ ' + e.message, 'err');
+  }
+}
+
+function renderNoticeList(now) {
+  const tb = document.getElementById('ntList');
+  if (!__ntItems.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--faint);padding:26px 0">'
+      + '还没有消息 —— 在上方填写内容后点「保存」，前台约 1 分钟内就能看到</td></tr>';
+    return;
+  }
+  tb.innerHTML = __ntItems.map(n => {
+    const [cls, txt] = ntStatus(n, now);
+    return `<tr>
+      <td><span class="nt-pill lv-${ntLv(n.level)}">${NT_LV[ntLv(n.level)]}</span></td>
+      <td>
+        <div class="nt-tt">${esc(n.title || '（无标题）')}${n.pinned ? '<span class="nt-pin">📌 钉住</span>' : ''}</div>
+        <div class="nt-bd">${esc(n.body || '')}</div>
+      </td>
+      <td><span class="nt-pill ${cls}">${txt}</span></td>
+      <td style="font-size:11.5px;color:var(--muted);line-height:1.6">${esc(ntPeriod(n))}</td>
+      <td style="font-size:11.5px;color:var(--muted);line-height:1.6">${esc((n.updatedAt || '').replace('T', ' '))}${n.author ? '<br>' + esc(n.author) : ''}</td>
+      <td>
+        <button class="mini" onclick="editNotice('${n.id}')">编辑</button>
+        <button class="mini" onclick="toggleNotice('${n.id}', ${n.enabled ? 'false' : 'true'})">${n.enabled ? '停用' : '发布'}</button>
+        <button class="mini danger" onclick="delNotice('${n.id}')">删除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function newNotice() {
+  __ntEditing = '';
+  document.getElementById('ntFormTitle').textContent = '发布新消息';
+  document.getElementById('ntTitle').value = '';
+  document.getElementById('ntBody').value = '';
+  ntRadio('info');
+  document.getElementById('ntPinned').checked = false;
+  document.getElementById('ntPublish').checked = true;
+  document.getElementById('ntStart').value = '';
+  document.getElementById('ntEnd').value = '';
+  const m = document.getElementById('ntMsg');
+  m.className = 'msg';
+  m.textContent = '';
+}
+
+function editNotice(id) {
+  const n = __ntItems.find(x => x.id === id);
+  if (!n) return;
+  __ntEditing = id;
+  document.getElementById('ntFormTitle').textContent = '编辑消息 · ' + id;
+  document.getElementById('ntTitle').value = n.title || '';
+  document.getElementById('ntBody').value = n.body || '';
+  ntRadio(ntLv(n.level));
+  document.getElementById('ntPinned').checked = !!n.pinned;
+  document.getElementById('ntPublish').checked = !!n.enabled;
+  document.getElementById('ntStart').value = (n.startAt || '').slice(0, 16);
+  document.getElementById('ntEnd').value = (n.endAt || '').slice(0, 16);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveNotice() {
+  const btn = document.getElementById('ntSaveBtn');
+  btn.disabled = true;
+  try {
+    const r = await jfetch('/api/admin/notice-save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: __ntEditing,
+        title: document.getElementById('ntTitle').value,
+        body: document.getElementById('ntBody').value,
+        level: ntLevel(),
+        pinned: document.getElementById('ntPinned').checked,
+        enabled: document.getElementById('ntPublish').checked,
+        startAt: document.getElementById('ntStart').value,
+        endAt: document.getElementById('ntEnd').value,
+      }),
+    });
+    const wasEdit = !!__ntEditing;
+    newNotice();
+    await loadNotices();
+    const it = r.item || {};
+    setMsg('ntMsg', it.enabled
+      ? `✓ ${wasEdit ? '已更新' : '已发布'}，前台 1 分钟内可见（${ntPeriod(it)}）`
+      : `✓ ${wasEdit ? '已更新' : '已保存'}为草稿，前台看不到`, 'ok');
+  } catch (e) {
+    setMsg('ntMsg', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleNotice(id, enabled) {
+  try {
+    await jfetch('/api/admin/notice-toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, enabled }),
+    });
+    await loadNotices();
+    setMsg('ntMsg2', enabled ? '✓ 已发布，前台 1 分钟内可见' : '✓ 已停用（转为草稿，前台立即不再显示）', 'ok');
+  } catch (e) {
+    setMsg('ntMsg2', '✗ ' + e.message, 'err');
+  }
+}
+
+async function delNotice(id) {
+  const n = __ntItems.find(x => x.id === id);
+  if (!confirm('确定删除消息「' + (n ? (n.title || n.id) : id) + '」？删除后前台立即消失，不可恢复。')) return;
+  try {
+    await jfetch('/api/admin/notice-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (__ntEditing === id) newNotice();
+    await loadNotices();
+    setMsg('ntMsg2', '✓ 已删除', 'ok');
+  } catch (e) {
+    setMsg('ntMsg2', '✗ ' + e.message, 'err');
+  }
+}
+
+async function clearDraftNotices() {
+  if (!__ntItems.some(n => !n.enabled)) { setMsg('ntMsg2', '没有草稿需要清理', 'busy'); return; }
+  if (!confirm('清空全部草稿（未发布的消息）？已发布的不受影响。')) return;
+  try {
+    const r = await jfetch('/api/admin/notice-clear', { method: 'POST' });
+    if (__ntEditing) newNotice();
+    await loadNotices();
+    setMsg('ntMsg2', `✓ 已清理 ${r.removed ?? 0} 条草稿`, 'ok');
+  } catch (e) {
+    setMsg('ntMsg2', '✗ ' + e.message, 'err');
+  }
+}
+
+openPageFromUrl();
+loadBrand();
+loadSession().then(() => {
+  if (document.getElementById('page-settings').classList.contains('active')) loadSettings();
+});
+loadStatus().then(() => { loadMapping(1); loadLibTabs().then(() => loadLib(1)); loadLxTabs().then(() => loadLx(1)); loadJdMeta(); loadDzTabs().then(() => { fillUsageCats(); loadDz(1); }); });
+</script>
+</body>
+</html>

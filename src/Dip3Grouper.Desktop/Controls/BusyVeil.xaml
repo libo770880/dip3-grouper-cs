@@ -1,0 +1,21 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Controls.BusyVeil"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed" IsHitTestVisible="False" Background="Transparent">
+  <!-- 顶部 3px 进度线：页面渐显模式下唯一的浮层视觉。
+       ⚠ 只有 3px 高，且 IsHitTestVisible=False —— 它不是「卡」，不占内容区、不挡点击。
+       ⚠ 轨道用 SoftBorder 而不是纯色：浅色主题下要能看出「这条线存在」，
+         但不能像一条分隔边框（Opacity 0.45 刚好只留一点痕迹）。 -->
+  <Grid VerticalAlignment="Top" Height="3" Background="Transparent">
+    <Border x:Name="Rail" Height="3" Opacity="0.45"
+            Background="{DynamicResource B.SoftBorder}" />
+    <!-- 滑块宽度用 ScaleX 表达百分比：从 0 拉到 0.92 就是「推进到 92%」，
+         不用改 Width，也不触发任何重新测量。 -->
+    <Border x:Name="Bar" Height="3" Opacity="1" RenderTransformOrigin="0,0.5"
+            Background="{DynamicResource B.Accent}">
+      <Border.RenderTransform>
+        <ScaleTransform x:Name="BarScale" ScaleX="0" />
+      </Border.RenderTransform>
+    </Border>
+  </Grid>
+</UserControl>

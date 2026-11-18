@@ -1,0 +1,250 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.Admin.AdminDataView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="2,0,0,14">
+      <TextBlock Style="{StaticResource PageTitle}" Text="数据更新" VerticalAlignment="Center" />
+      <TextBlock x:Name="TxtHead" Style="{StaticResource Desc}" VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 Text="从局域网数据源同步业务数据；本机私有配置与收藏不参与" />
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="1020" HorizontalAlignment="Left">
+
+        <!-- ============ 卡 1：数据源 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="数据源" />
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="92" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+
+              <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Label}" Text="服务器地址"
+                         VerticalAlignment="Top" Margin="0,8,0,0" />
+              <StackPanel Grid.Row="0" Grid.Column="1">
+                <TextBox x:Name="TxtServer" Style="{StaticResource Tb}" Width="320"
+                         HorizontalAlignment="Left"
+                         ToolTip="例：http://10.0.0.8:3210，只写 10.0.0.8:3210 也可以" />
+                <!-- 说明放输入框下方：贴着右边写会在长句时被挤成断行，也看不清是在说这个框 -->
+                <TextBlock Style="{StaticResource Desc}" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="留空表示本机独立使用，不做任何联网检查。" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="共享口令" Margin="0,12,0,0" VerticalAlignment="Top" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,0">
+                <PasswordBox x:Name="PwbToken" Style="{StaticResource Pwb}" Width="220"
+                             HorizontalAlignment="Left" />
+                <TextBlock Style="{StaticResource Desc}" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="可空；由服务端在「网页后台 → 系统设置 → 数据分发共享口令」里设定，两边填成一样。" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="自动检查" Margin="0,12,0,0" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,12,0,0">
+                <CheckBox x:Name="ChkAuto" Style="{StaticResource Cbx}"
+                          Content="启动后在后台静默检查一次，有更新时用托盘气泡提示" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+              <Button x:Name="BtnSave" Style="{StaticResource Btn.Primary}" Content="保存配置"
+                      Click="OnSaveSource" />
+              <Button x:Name="BtnCheck" Style="{StaticResource Btn.Ghost}" Content="检查更新"
+                      Margin="8,0,0,0" Click="OnCheck" />
+              <TextBlock x:Name="TxtSourceStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 公共设置：与业务数据分开，只同步展示类配置 -->
+            <Border Background="{DynamicResource B.SoftBg}" CornerRadius="8" Padding="14,12"
+                    Margin="0,16,0,0">
+              <StackPanel>
+                <CheckBox x:Name="ChkFollow" Style="{StaticResource Cbx}" Click="OnToggleFollow"
+                          Content="跟随服务端公共设置（软件名称 / 单位副名 / 立项指南参数）" />
+                <TextBlock Style="{StaticResource Desc}" Margin="22,5,0,0" TextWrapping="Wrap"
+                           Text="只同步展示类配置：登录口令、界面主题、托盘开关、数据源地址、物价收藏始终保留本机设置。" />
+                <StackPanel Orientation="Horizontal" Margin="22,9,0,0">
+                  <Button x:Name="BtnSyncSet" Style="{StaticResource Btn.Ghost}" Content="立即同步设置"
+                          Click="OnSyncSettings" />
+                  <TextBlock x:Name="TxtSetStatus" Style="{StaticResource Desc}" Margin="12,0,0,0"
+                             VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="540" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 2：更新内容 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="更新内容" />
+            <TextBlock x:Name="TxtDiffTip" Style="{StaticResource Desc}" Margin="0,2,0,10"
+                       TextWrapping="Wrap"
+                       Text="点「检查更新」后，这里列出每个数据文件与本机的差异；只下载不一致的部分。" />
+
+            <Grid>
+            <DataGrid x:Name="GridDiff" Style="{StaticResource Dg.ReadOnly}" MinHeight="96"
+                      HeadersVisibility="Column">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="状态" Width="76">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding StatusText}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="数据文件" Width="170">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding Label}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="本机" Width="86">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding LocalSizeText}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="服务器" Width="86">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding RemoteSizeText}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="服务器时间" Width="100">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding UpdatedText}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="存放位置" Width="*">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><TextBlock Style="{StaticResource DgCellMono}" Text="{Binding RelPath}" /></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+            <!-- 空表提示：只有一排表头的白框看起来像"加载失败"，明确写清下一步 -->
+            <TextBlock x:Name="TxtDiffEmpty" Style="{StaticResource Desc}"
+                       Text="暂无差异 —— 点上方「检查更新」与服务器清单比对，或本机已是最新。"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="0,0,0,8" IsHitTestVisible="False" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+              <Button x:Name="BtnApply" Style="{StaticResource Btn.Primary}" Content="立即更新"
+                      Click="OnApply" />
+              <TextBlock x:Name="TxtApplyStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Grid x:Name="ProgHost" Width="320" Height="6" VerticalAlignment="Center"
+                    Visibility="Collapsed">
+                <Border CornerRadius="3" Background="{DynamicResource B.SoftBg}" />
+                <Border x:Name="ProgFill" CornerRadius="3" HorizontalAlignment="Left" Width="0"
+                        Background="{DynamicResource B.Accent}" />
+              </Grid>
+              <TextBlock x:Name="TxtProg" Style="{StaticResource Desc}" Margin="10,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 3：备份与回滚 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="备份与回滚" />
+            <TextBlock Style="{StaticResource Desc}" Margin="0,2,0,10" TextWrapping="Wrap"
+                       Text="每次更新前，被覆盖的文件都会原样备份到 data/_backup/&lt;时间戳&gt;/。选一个备份点即可整体还原，还原前的版本同样会被备份。" />
+
+            <StackPanel Orientation="Horizontal">
+              <ComboBox x:Name="CmbBackup" Style="{StaticResource Cb}" Width="240" />
+              <Button x:Name="BtnRefreshBak" Style="{StaticResource Btn.Ghost}" Content="刷新"
+                      Margin="8,0,0,0" Click="OnRefreshBackups" />
+              <Button x:Name="BtnRestore" Style="{StaticResource Btn.Ghost}" Content="还原此备份点"
+                      Margin="8,0,0,0" Click="OnRestore" />
+              <Button x:Name="BtnOpenBak" Style="{StaticResource Btn.Ghost}" Content="打开备份目录"
+                      Margin="8,0,0,0" Click="OnOpenBackup" />
+              <TextBlock x:Name="TxtRestoreStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 4：离线更新包 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,14">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="离线更新包" />
+            <TextBlock Style="{StaticResource Desc}" Margin="0,2,0,10" TextWrapping="Wrap"
+                       Text="给上不了网的机器用：在数据源那台（或任一台已更新的机器）上导出更新包，拷到目标机器导入，效果与在线更新完全一致。" />
+
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnExport" Style="{StaticResource Btn.Ghost}" Content="导出更新包…"
+                      Click="OnExport" />
+              <Button x:Name="BtnImport" Style="{StaticResource Btn.Ghost}" Content="导入更新包…"
+                      Margin="8,0,0,0" Click="OnImport" />
+              <TextBlock x:Name="TxtPackStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 5：客户端更新 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,14">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="客户端更新" />
+            <TextBlock Style="{StaticResource Desc}" Margin="0,2,0,10" TextWrapping="Wrap"
+                       Text="数据更新换的是病种库与资料，这里换的是程序本体（exe / dll）。检查到新版本后下载安装包，程序会自动退出、替换并重新启动。" />
+
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Label}" Text="当前版本" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtAppVersion" Style="{StaticResource Mono}" Margin="10,0,0,0"
+                         FontSize="12.5" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Text}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button x:Name="BtnAppCheck" Style="{StaticResource Btn.Primary}" Content="检查更新"
+                      Click="OnAppCheck" />
+              <Button x:Name="BtnAppApply" Style="{StaticResource Btn.Ghost}" Content="下载并更新"
+                      Margin="8,0,0,0" IsEnabled="False" Click="OnAppApply" />
+              <Button x:Name="BtnAppLocal" Style="{StaticResource Btn.Ghost}" Content="从本地更新包安装…"
+                      Margin="8,0,0,0" Click="OnAppLocal" />
+              <Button x:Name="BtnAppOpen" Style="{StaticResource Btn.Ghost}" Content="打开暂存目录"
+                      Margin="8,0,0,0" Click="OnAppOpenDir" />
+            </StackPanel>
+
+            <TextBlock x:Name="TxtAppStatus" Style="{StaticResource Desc}" Margin="0,10,0,0"
+                       TextWrapping="Wrap" MaxWidth="760"
+                       Text="点「检查更新」从更新源获取最新版本信息。" />
+            <TextBlock x:Name="TxtAppNotes" Style="{StaticResource Desc}" Margin="0,8,0,0"
+                       TextWrapping="Wrap" MaxWidth="760"
+                       Foreground="{DynamicResource B.Text}" />
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Grid x:Name="ProgAppHost" Width="320" Height="6" VerticalAlignment="Center"
+                    Visibility="Collapsed">
+                <Border CornerRadius="3" Background="{DynamicResource B.SoftBg}" />
+                <Border x:Name="ProgAppFill" CornerRadius="3" HorizontalAlignment="Left" Width="0"
+                        Background="{DynamicResource B.Accent}" />
+              </Grid>
+              <TextBlock x:Name="TxtAppProg" Style="{StaticResource Desc}" Margin="10,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

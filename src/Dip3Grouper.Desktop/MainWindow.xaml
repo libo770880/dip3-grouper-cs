@@ -1,0 +1,371 @@
+<Window x:Class="Dip3GrouperApp.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:views="clr-namespace:Dip3GrouperApp.Desktop.Views"
+        xmlns:local="clr-namespace:Dip3GrouperApp.Desktop"
+        Title="DIP 3.0 分组器"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Width="1300" Height="870" MinWidth="1060" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource B.Bg}"
+        FontFamily="{StaticResource Font.UI}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+  <shell:WindowChrome.WindowChrome>
+    <shell:WindowChrome CaptionHeight="52" ResizeBorderThickness="6"
+                        GlassFrameThickness="0" CornerRadius="0"
+                        UseAeroCaptionButtons="False" />
+  </shell:WindowChrome.WindowChrome>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="52" />
+      <!-- 钉住的消息横幅（无内容时折叠，不占高度） -->
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- ================= 标题栏 ================= -->
+    <Border Grid.Row="0" Background="{DynamicResource B.Top}"
+            BorderBrush="{DynamicResource B.Border}" BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 品牌 -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,24,0" VerticalAlignment="Center">
+          <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource B.LogoBox}">
+            <TextBlock x:Name="TxtLogo" Text="DIP" Foreground="{DynamicResource B.White}"
+                       FontSize="12.5" FontWeight="Bold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+            <TextBlock x:Name="TxtAppName" Text="DIP 3.0 分组器" FontSize="15" FontWeight="Bold"
+                       Foreground="{DynamicResource B.Text}" LineHeight="17" />
+            <TextBlock x:Name="TxtSubtitle" FontSize="11" Foreground="{DynamicResource B.Muted}"
+                       LineHeight="13" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 主导航 -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Stretch"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True">
+          <RadioButton x:Name="NavSingle" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="单条分组" IsChecked="True" Checked="OnNavChecked" />
+          <RadioButton x:Name="NavBatch" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="批量分组" Checked="OnNavChecked" />
+          <RadioButton x:Name="NavLib" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="病种库查询" Checked="OnNavChecked" />
+          <RadioButton x:Name="NavLx" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="立项指南查询" Checked="OnNavChecked" />
+          <RadioButton x:Name="NavDz" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="德州物价" Checked="OnNavChecked" />
+          <RadioButton x:Name="NavGf" GroupName="MainNav" Style="{StaticResource Nav.Top}"
+                       Content="项目技术规范" Checked="OnNavChecked" />
+        </StackPanel>
+
+        <!-- 右侧操作区 -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                    Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+          <!-- 表格行高：紧凑 / 标准。全局生效（物价四表 / 病种库 / 立项指南 / 审计日志），选择落本机 -->
+          <Button x:Name="BtnDensity" Style="{StaticResource Btn.Ghost}"
+                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
+                  Click="OnToggleDensity" ToolTip="表格行高：紧凑 / 标准（只影响本机）">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="&#xE8A9;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtDensity" Text="紧凑" Margin="5,0,0,0" FontSize="12.5"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+
+          <!-- 界面主题：前台直接换肤（不用进后台），选择即落盘 -->
+          <Button x:Name="BtnTheme" Style="{StaticResource Btn.Ghost}"
+                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
+                  Click="OnToggleTheme" ToolTip="界面主题（换肤立即生效，只影响本机）">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="&#xE790;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtThemeBtn" Text="主题" Margin="5,0,0,0" FontSize="12.5"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+
+          <!-- 检查更新：启动时已静默查过 GitHub Release；这里手动再查，结果用弹窗明确告知 -->
+          <Button x:Name="BtnUpdate" Style="{StaticResource Btn.Ghost}"
+                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
+                  Click="OnCheckUpdate"
+                  ToolTip="检查更新（当前版本 v1.0.0）：到 GitHub Release 下载新版本">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtUpdate" Text="检查更新" Margin="5,0,0,0" FontSize="12.5"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+
+          <!-- 通知公告：服务端后台发布 → 这里轮询取回（未读数角标 + 点击展开列表） -->
+          <Button x:Name="BtnNotice" Style="{StaticResource Btn.Ghost}"
+                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
+                  Click="OnToggleNotice" ToolTip="通知公告">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock x:Name="TxtBell" Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center" />
+              <Border x:Name="NoticeBadge" CornerRadius="8" Margin="6,0,0,0" Padding="5,0"
+                      MinWidth="16" Height="16" VerticalAlignment="Center" Visibility="Collapsed"
+                      Background="{DynamicResource B.Danger}">
+                <TextBlock x:Name="TxtBadge" Text="" FontSize="10.5" FontWeight="Bold"
+                           Foreground="{DynamicResource B.White}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="BtnAdmin" Style="{StaticResource Btn.Ghost}"
+                  Padding="13,0" Height="30" MinHeight="30" FontSize="12.5"
+                  Content="后台管理" Click="OnOpenAdmin" />
+
+          <Border Width="1" Height="20" Background="{DynamicResource B.Border}" Margin="12,0" />
+
+          <Button x:Name="BtnMin" Style="{StaticResource WinBtn}" Click="OnMinimize" ToolTip="最小化">
+            <Path Style="{StaticResource WinIcon}" Data="M 0 5.5 L 11 5.5" />
+          </Button>
+          <Button x:Name="BtnMax" Style="{StaticResource WinBtn}" Click="OnMaximize" ToolTip="最大化">
+            <Path x:Name="MaxIcon" Style="{StaticResource WinIcon}"
+                  Data="M 0.6 0.6 L 10.4 0.6 L 10.4 10.4 L 0.6 10.4 Z" />
+          </Button>
+          <Button x:Name="BtnClose" Style="{StaticResource WinBtn.Close}" Click="OnClose" ToolTip="关闭">
+            <Path Style="{StaticResource WinIcon}"
+                  Data="M 0.6 0.6 L 10.4 10.4 M 10.4 0.6 L 0.6 10.4" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ================= 钉住消息横幅（钉住的公告常驻这里） ================= -->
+    <Border x:Name="NoticeBar" Grid.Row="1" Visibility="Collapsed"
+            Background="{DynamicResource B.WarnBg}" BorderBrush="{DynamicResource B.Border}"
+            BorderThickness="0,0,0,1">
+      <Grid Margin="16,7">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Border x:Name="NoticeBarTag" Grid.Column="0" CornerRadius="4" Padding="7,2"
+                Margin="0,0,10,0" VerticalAlignment="Center" Background="{DynamicResource B.Warn}">
+          <TextBlock x:Name="TxtBarTag" Text="提醒" FontSize="10.5" FontWeight="Bold"
+                     Foreground="{DynamicResource B.White}" />
+        </Border>
+        <TextBlock x:Name="TxtBarText" Grid.Column="1" VerticalAlignment="Center"
+                   FontSize="12.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                   Foreground="{DynamicResource B.WarnText}" />
+        <Button x:Name="BtnBarView" Grid.Column="2" Style="{StaticResource Btn.Ghost}"
+                Content="查看" Padding="10,0" Height="24" MinHeight="24" FontSize="12"
+                Margin="10,0,0,0" Click="OnBarView" />
+        <Button x:Name="BtnBarClose" Grid.Column="3" Style="{StaticResource Btn.Ghost}"
+                Content="✕" Padding="7,0" Height="24" MinHeight="24" FontSize="11"
+                Margin="6,0,0,0" Click="OnBarHide" ToolTip="本机不再显示这条（不影响其他人）" />
+      </Grid>
+    </Border>
+
+    <!-- ================= 内容区 ================= -->
+    <views:SingleGroupView x:Name="ViewSingle" Grid.Row="2" />
+    <views:BatchGroupView x:Name="ViewBatch" Grid.Row="2" Visibility="Collapsed" />
+    <views:DiseaseLibView x:Name="ViewLib" Grid.Row="2" Visibility="Collapsed" />
+    <views:LixiangView x:Name="ViewLx" Grid.Row="2" Visibility="Collapsed" />
+    <views:DezhouPriceView x:Name="ViewDz" Grid.Row="2" Visibility="Collapsed" />
+    <views:GuifanView x:Name="ViewGf" Grid.Row="2" Visibility="Collapsed" />
+
+    <!-- ================= 页签载入进度条 =================
+         点击页签进入数据页时的过渡指示：渐变滑块横向循环滑动。
+         动画作用在 TranslateTransform 上（WPF 渲染线程合成），数据载入把 UI 线程占满时它仍然会动，
+         给「正在加载」的真实反馈而不是整块卡死感。载入完成即隐藏，不占高度。 -->
+    <Border x:Name="LoadTrack" Grid.Row="2" Height="4" VerticalAlignment="Top"
+            Visibility="Collapsed" Background="{DynamicResource B.SoftBorder}">
+      <Rectangle x:Name="LoadSlide" Width="220" HorizontalAlignment="Left"
+                 Fill="{DynamicResource B.Accent}">
+        <Rectangle.OpacityMask>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#00000000" Offset="0" />
+            <GradientStop Color="#FF000000" Offset="0.62" />
+            <GradientStop Color="#00000000" Offset="1" />
+          </LinearGradientBrush>
+        </Rectangle.OpacityMask>
+        <Rectangle.RenderTransform>
+          <TranslateTransform x:Name="LoadSlideX" />
+        </Rectangle.RenderTransform>
+      </Rectangle>
+    </Border>
+
+    <!-- ================= 消息面板 ================= -->
+    <Popup x:Name="NoticePopup" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+           PopupAnimation="Fade" HorizontalOffset="0">
+      <Border Width="440" MaxHeight="480" Margin="6" CornerRadius="10"
+              Background="{DynamicResource B.Card}"
+              BorderBrush="{DynamicResource B.BorderStrong}" BorderThickness="1">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <Border Grid.Row="0" Background="{DynamicResource B.SoftBg}" CornerRadius="10,10,0,0"
+                  BorderBrush="{DynamicResource B.Border}" BorderThickness="0,0,0,1">
+            <Grid Margin="14,10,10,10">
+              <TextBlock x:Name="TxtNoticeHead" Text="通知公告" FontSize="13" FontWeight="Bold"
+                         Foreground="{DynamicResource B.Text}" VerticalAlignment="Center" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="BtnNoticeReload" Style="{StaticResource Btn.Ghost}" Content="刷新"
+                        Padding="9,0" Height="24" MinHeight="24" FontSize="11.5" Click="OnNoticeReload" />
+                <Button x:Name="BtnNoticeAllRead" Style="{StaticResource Btn.Ghost}" Content="全部已读"
+                        Padding="9,0" Height="24" MinHeight="24" FontSize="11.5" Margin="6,0,0,0"
+                        Click="OnNoticeAllRead" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="360">
+            <StackPanel x:Name="NoticeList" Margin="12,10,12,10" />
+          </ScrollViewer>
+
+          <Border Grid.Row="2" Background="{DynamicResource B.SoftBg}" CornerRadius="0,0,10,10"
+                  BorderBrush="{DynamicResource B.Border}" BorderThickness="0,1,0,0">
+            <TextBlock x:Name="TxtNoticeFoot" Margin="14,8" FontSize="11"
+                       Foreground="{DynamicResource B.Faint}" TextWrapping="Wrap" />
+          </Border>
+        </Grid>
+      </Border>
+    </Popup>
+    <!-- ================= 主题选择面板 =================
+         前台直接换肤：点「主题」按钮弹出 5 套配色，选哪套立刻生效并写回设置。
+         色块用的是各主题自己的颜色（固定值，不随当前主题变），外框与文字用
+         DynamicResource 跟随当前主题，所以深色主题下这一层也是深底浅字。 -->
+    <Popup x:Name="ThemePopup" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+           PopupAnimation="Fade" HorizontalOffset="0">
+      <Border Width="512" Margin="6" CornerRadius="10"
+              Background="{DynamicResource B.Card}"
+              BorderBrush="{DynamicResource B.BorderStrong}" BorderThickness="1">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <Border Grid.Row="0" Background="{DynamicResource B.SoftBg}" CornerRadius="10,10,0,0"
+                  BorderBrush="{DynamicResource B.Border}" BorderThickness="0,0,0,1">
+            <StackPanel Margin="16,10,16,10">
+              <TextBlock Text="界面主题" FontSize="13" FontWeight="Bold"
+                         Foreground="{DynamicResource B.Text}" />
+              <TextBlock Text="选中即生效，只影响本机显示；后台再改也不冲突"
+                         FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource B.Muted}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <ItemsControl x:Name="ThemeHost" Grid.Row="1" Margin="10,12,0,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Style="{StaticResource ThemeSwatch}" Tag="{Binding Id}"
+                        MouseLeftButtonUp="OnPickTheme">
+                  <Grid>
+                    <StackPanel>
+                      <Border Height="52" CornerRadius="8" BorderThickness="1"
+                              BorderBrush="{DynamicResource B.Border}">
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="0.7*" />
+                          </Grid.ColumnDefinitions>
+                          <Border Grid.Column="0" CornerRadius="7,0,0,7" Background="{Binding BgBrush}" />
+                          <Border Grid.Column="1" Background="{Binding CardBrush}" />
+                          <Border Grid.Column="2" CornerRadius="0,7,7,0" Background="{Binding AccentBrush}" />
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                 Margin="0,9,0,0" HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource B.Text}" />
+                      <TextBlock Text="{Binding Hint}" FontSize="11" Margin="0,2,0,0"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource B.Muted}" />
+                    </StackPanel>
+
+                    <!-- 使用中角标：只有当前主题那一张显示，避免「看着都一样」 -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,-4,-4,0" Width="18" Height="18" CornerRadius="9"
+                            Background="{DynamicResource B.Accent}"
+                            Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
+                      <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                 Foreground="{DynamicResource B.White}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Grid.Row="2" Background="{DynamicResource B.SoftBg}" CornerRadius="0,0,10,10"
+                  BorderBrush="{DynamicResource B.Border}" BorderThickness="0,1,0,0">
+            <Grid Margin="16,7,10,7">
+              <TextBlock x:Name="TxtThemeCur" FontSize="11.5" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Muted}" />
+              <Button x:Name="BtnThemeReset" Style="{StaticResource Btn.Ghost}" Content="恢复默认"
+                      HorizontalAlignment="Right" Padding="9,0" Height="24" MinHeight="24"
+                      FontSize="11.5" Click="OnResetTheme"
+                      ToolTip="回到「经典蓝」（默认主题）" />
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Popup>
+    <!-- ================= 工具栏：右侧竖排侧边按钮 + 抽屉 =================
+         不进导航（它不是「查询页」，是开单时随手用的小工具柜）：
+         平时只在窗口右边缘挂一条竖排「工具栏」，点开滑出工具列表（病理开具指引 + 预留位），
+         以后加工具只往 ToolPanel 里加卡片/视图，导航与快捷键都不用动。 -->
+    <Border x:Name="GuideTab" Grid.Row="2" Width="34" Height="80"
+            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,0,0"
+            CornerRadius="9,0,0,9" Cursor="Hand" Background="{DynamicResource B.Accent}"
+            Panel.ZIndex="40" MouseLeftButtonUp="OnOpenGuide"
+            ToolTip="工具栏 —— 病理开具指引等开单速查工具（Ctrl+G 直达病理）">
+      <!-- 中文竖排：窄宽 + 自动换行，一个字一行（比整体旋转 90° 更好认） -->
+      <TextBlock Text="工具栏" Foreground="{DynamicResource B.White}"
+                 FontSize="12.5" FontWeight="SemiBold" Width="14"
+                 TextWrapping="Wrap" TextAlignment="Center"
+                 LineHeight="19" LineStackingStrategy="BlockLineHeight"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
+
+    <Grid x:Name="GuideLayer" Grid.Row="2" Visibility="Collapsed" Panel.ZIndex="60">
+      <Border x:Name="GuideMask" Background="#330f1728" MouseLeftButtonDown="OnCloseGuide" />
+      <Border x:Name="GuideDrawer" Width="782" HorizontalAlignment="Right"
+              Background="{DynamicResource B.Card}"
+              BorderBrush="{DynamicResource B.Border}" BorderThickness="1,0,0,0">
+        <Border.RenderTransform>
+          <TranslateTransform x:Name="GuideX" X="782" />
+        </Border.RenderTransform>
+        <Border.Effect>
+          <DropShadowEffect BlurRadius="26" ShadowDepth="0" Direction="180"
+                            Color="#0f1728" Opacity="0.16" />
+        </Border.Effect>
+        <local:ToolPanel x:Name="ToolHost" />
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Dip3Grouper</RootNamespace>
+    <AssemblyName>Dip3Grouper.Core</AssemblyName>
+    <AcceptNPOIOSMFLicense>true</AcceptNPOIOSMFLicense>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- JsStringEncoder 需要 unsafe（JavaScriptEncoder 的指针式重写） -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NPOI" Version="2.8.1" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="ToolGood.Words.Pinyin" Version="3.1.0.4" />
+    <PackageReference Include="ToolGood.Words.FirstPinyin" Version="3.1.0.4" />
+  </ItemGroup>
+
+</Project>

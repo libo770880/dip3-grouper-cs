@@ -1,0 +1,3889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIP 3.0 分组器</title>
+<script>
+  /* 首屏防闪：样式生效前先把上次选的主题挂到 <html data-theme>，否则会先闪一下默认蓝 */
+  try { var _th = localStorage.getItem('dip3.theme'); if (_th && _th !== 'azure') document.documentElement.dataset.theme = _th; } catch (e) {}
+</script>
+<style>
+  /* ==========================================================================
+     主题变量：五套配色与桌面端 ThemeCatalog 一一对应（id 同、色值同）
+     ``:root`` 即「经典蓝」（默认）；其余四套只覆盖变量，靠 <html data-theme> 切换。
+     ⚠ 新增用色一律走变量 —— 直接写死十六进制，换到深色主题就会留下白块。
+     ========================================================================== */
+  :root {
+    --bg:#eef2f8; --card:#ffffff; --soft-bg:#f7f9fc; --seg-bg:#e9eef6; --input-bg:#fbfcfe;
+    --line-soft:#eef1f5; --border:#e3e8ef; --border-strong:#d3d9e3; --accent-line:#b9d3f3;
+    --text:#17212e; --muted:#5b6b81; --faint:#9aa3b2; --info-text:#33455e; --white:#ffffff;
+    --accent:#1d6fe0; --accent-hover:#1558b8; --accent-soft:#e8f1fd; --accent-2:#2f8fe6;
+    --accent-ring:rgba(29,111,224,.13);
+    --ok:#16a34a; --ok-bg:#f0fdf4; --ok-line:#bbf7d0;
+    --warn:#d97706; --warn-bg:#fef3c7; --warn-line:#f5e2c0;
+    --danger:#dc2626; --danger-bg:#fef4f4; --danger-line:#f6d5d5;
+    --info-bg:#f0f7ff; --info-border:#d6e8fb;
+    --row-alt:#f8fafc; --row-hover:#eef4fe; --scroll-thumb:#c4cdd9;
+    --logo-a:#0e3a8c; --logo-b:#1d6fe0; --logo-c:#2f8fe6;
+    --nav-bg:rgba(255,255,255,.88); --overlay:rgba(15,23,42,.34);
+    --shadow: 0 1px 3px rgba(23,33,46,.06), 0 8px 24px rgba(23,33,46,.07);
+    --radius: 12px;
+    --nav-h: 60px;
+  }
+
+  html[data-theme="jade"] {
+    --bg:#edf5f3; --card:#ffffff; --soft-bg:#f4faf8; --seg-bg:#e2efec; --input-bg:#f7fcfa;
+    --line-soft:#dcebe7; --border:#dde9e6; --border-strong:#c9dbd7; --accent-line:#b9e2da;
+    --text:#12241f; --muted:#527068; --faint:#93aca5; --info-text:#2c4f48;
+    --accent:#0f8a7e; --accent-hover:#0a6b62; --accent-soft:#e3f4f1; --accent-2:#2fb3a2;
+    --accent-ring:rgba(15,138,126,.15);
+    --ok:#15a06a; --ok-bg:#eefaf3; --ok-line:#c9ecd9;
+    --warn:#cf7a12; --warn-bg:#fdf1d8; --warn-line:#f0dcb6;
+    --danger:#d0453f; --danger-bg:#fdf0ef; --danger-line:#f3d3d1;
+    --info-bg:#eefaf7; --info-border:#c9e9e2;
+    --row-alt:#f6fbf9; --row-hover:#e8f5f2; --scroll-thumb:#bcd2cd;
+    --logo-a:#08524a; --logo-b:#0f8a7e; --logo-c:#2fb3a2;
+    --shadow: 0 1px 3px rgba(18,36,31,.06), 0 8px 24px rgba(18,36,31,.07);
+  }
+
+  html[data-theme="indigo"] {
+    --bg:#eff0fa; --card:#ffffff; --soft-bg:#f7f7fd; --seg-bg:#e8e9f7; --input-bg:#fafaff;
+    --line-soft:#e6e7f4; --border:#e0e2f2; --border-strong:#cdd0e8; --accent-line:#c9c5f7;
+    --text:#191b2e; --muted:#606580; --faint:#9ba0bb; --info-text:#383d70;
+    --accent:#4f46e5; --accent-hover:#4338ca; --accent-soft:#ecebfe; --accent-2:#7b6ff0;
+    --accent-ring:rgba(79,70,229,.14);
+    --ok:#17a558; --ok-bg:#eefaf3; --ok-line:#c9ecd9;
+    --warn:#d4870c; --warn-bg:#fdf0d9; --warn-line:#f2dcba;
+    --danger:#dc2b41; --danger-bg:#fdf0f2; --danger-line:#f4d2d7;
+    --info-bg:#f0f0fe; --info-border:#d6d7fb;
+    --row-alt:#f8f8fe; --row-hover:#eef0fe; --scroll-thumb:#c3c6dd;
+    --logo-a:#2b1f96; --logo-b:#4f46e5; --logo-c:#7b6ff0;
+    --shadow: 0 1px 3px rgba(25,27,46,.06), 0 8px 24px rgba(25,27,46,.07);
+  }
+
+  html[data-theme="crimson"] {
+    --bg:#f8f2ee; --card:#fffdfc; --soft-bg:#fdf8f5; --seg-bg:#f1e6e0; --input-bg:#fefaf8;
+    --line-soft:#f2e5df; --border:#ecdfd8; --border-strong:#dcc9bf; --accent-line:#e8c3bd;
+    --text:#2b1a15; --muted:#836a5f; --faint:#b09a8e; --info-text:#5c362d;
+    --accent:#b4322a; --accent-hover:#93251e; --accent-soft:#fbeae7; --accent-2:#d9614a;
+    --accent-ring:rgba(180,50,42,.14);
+    --ok:#4f8a3d; --ok-bg:#f3f8ee; --ok-line:#d6e6cd;
+    --warn:#c07a15; --warn-bg:#fbebd2; --warn-line:#eed6ae;
+    --danger:#c0392b; --danger-bg:#fcefee; --danger-line:#eed4d0;
+    --info-bg:#fdf0ec; --info-border:#f3d8d0;
+    --row-alt:#fdf9f7; --row-hover:#fbeeea; --scroll-thumb:#d3bdb3;
+    --logo-a:#6d1b14; --logo-b:#b4322a; --logo-c:#d9614a;
+    --shadow: 0 1px 3px rgba(43,26,21,.06), 0 8px 24px rgba(43,26,21,.07);
+  }
+
+  html[data-theme="graphite"] {
+    color-scheme: dark;
+    --bg:#16191f; --card:#1f232b; --soft-bg:#21252d; --seg-bg:#252a34; --input-bg:#1a1f27;
+    --line-soft:#262b34; --border:#2b303a; --border-strong:#3a4150; --accent-line:#2c3d59;
+    --text:#e7ebf2; --muted:#9aa5b8; --faint:#6e7a8e; --info-text:#b9c9e2;
+    --accent:#4c8dff; --accent-hover:#74a6ff; --accent-soft:#202e45; --accent-2:#74a6ff;
+    --accent-ring:rgba(76,141,255,.22);
+    --ok:#3ecf8e; --ok-bg:#12251d; --ok-line:#1f4536;
+    --warn:#e0a53c; --warn-bg:#382d14; --warn-line:#57431a;
+    --danger:#f0616d; --danger-bg:#2c1a1e; --danger-line:#4d2a31;
+    --info-bg:#1d2839; --info-border:#2c3d59;
+    --row-alt:#1b1f26; --row-hover:#252b36; --scroll-thumb:#4a5260;
+    --logo-a:#1b3f7a; --logo-b:#4c8dff; --logo-c:#7fb0ff;
+    --nav-bg:rgba(26,30,37,.92); --overlay:rgba(0,0,0,.55);
+    --shadow: 0 1px 3px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scrollbar-gutter: stable; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    color: var(--text); font-size: 14px;
+    background: var(--bg);
+    min-height: 100vh;
+    padding-top: var(--nav-h);
+  }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ===== 顶部导航栏 ===== */
+  .navbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 100;
+    background: var(--nav-bg); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 8px rgba(23,33,46,.06);
+  }
+  .nav-inner {
+    max-width: 1560px; margin: 0 auto; height: 100%;
+    display: flex; align-items: center; gap: 8px; padding: 0 26px;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px; margin-right: 22px; flex: none;
+  }
+  .nav-logo .logo-box {
+    width: 34px; height: 34px; border-radius: 9px; flex: none;
+    background: linear-gradient(135deg, var(--logo-a), var(--logo-b) 60%, var(--logo-c));
+    color: var(--white); font-size: 13px; font-weight: 800; letter-spacing: .5px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(29,111,224,.35);
+  }
+  .nav-logo .t1 { font-size: 15.5px; font-weight: 800; letter-spacing: .2px; line-height: 1.25; }
+  .nav-logo .t2 { font-size: 11px; color: var(--muted); line-height: 1.2; }
+  .nav-links { display: flex; gap: 4px; height: 100%; }
+  .nav-links button {
+    position: relative; border: none; background: none; cursor: pointer;
+    padding: 0 15px; height: 100%; font-size: 14.5px; color: var(--muted); font-weight: 500;
+    white-space: nowrap;
+    transition: color .15s; font-family: inherit;
+  }
+  .nav-links button::after {
+    content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 3px;
+    border-radius: 3px 3px 0 0; background: var(--accent); transform: scaleX(0); transition: transform .18s;
+  }
+  .nav-links button:hover { color: var(--accent); }
+  .nav-links button.active { color: var(--accent); font-weight: 700; }
+  .nav-links button.active::after { transform: scaleX(1); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  /* 右上角这几个按钮宽度有限，文字换行会变成「主 / 题」两行（导航从 4 项变 6 项后空间更紧） */
+  .nav-right button, .nav-right a { white-space: nowrap; flex: none; }
+  .admin-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 13px; color: var(--accent); text-decoration: none;
+    padding: 6px 15px; border-radius: 20px; border: 1px solid var(--accent-line); background: var(--card);
+    transition: all .15s;
+  }
+  .admin-link:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+  /* ===== 主体 ===== */
+  .wrap { max-width: 1560px; margin: 0 auto; padding: 26px 26px 44px; }
+
+  /* 页头：标题成组靠左，视图切换贴右 —— 一屏内只有一条基线，不堆信息 */
+  .page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .page-title .ttl { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .page-title h2 { font-size: 21px; font-weight: 700; letter-spacing: .2px; line-height: 1.3; }
+  .page-title .desc { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .page-title .view-toggle { margin-left: auto; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px 20px; box-shadow: 0 1px 2px rgba(23,33,46,.04);
+  }
+  .hidden { display: none !important; }
+
+  .grid { display: grid; grid-template-columns: 420px 1fr; gap: 22px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; font-weight: 500; white-space: nowrap; }
+  .field input, .field select {
+    width: 100%; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: 8px;
+    font-size: 13.5px; font-family: Consolas, "JetBrains Mono", monospace;
+    color: var(--text); background: var(--input-bg);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  /* 占位文字要显式给色：深色主题下 UA 默认的灰在深底上几乎看不见 */
+  .field input::placeholder, textarea::placeholder, .lib-toolbar input::placeholder { color: var(--faint); }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--accent); background: var(--card);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  .row3 { display: grid; grid-template-columns: 1fr 92px 1fr; gap: 10px; }
+  button.primary {
+    background: var(--accent); color: var(--white); border: none; border-radius: 8px;
+    height: 34px; padding: 0 22px; font-size: 14px; cursor: pointer; font-weight: 700; letter-spacing: 1px;
+    transition: background .12s;
+  }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:active { transform: translateY(1px); }
+  button.primary:disabled { opacity: .65; cursor: wait; transform: none; }
+  button.ghost {
+    background: var(--card); color: var(--accent); border: 1px solid var(--accent-line);
+    border-radius: 8px; height: 34px; padding: 0 16px; font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  button.ghost:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+  .badge {
+    display: inline-block; padding: 3px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; color: var(--white); letter-spacing: 1px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+  }
+  .badge.XQ { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .badge.FZ { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .badge.BX { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+  .badge.JC { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .badge.JICENG { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+  .badge.ZH { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+  .badge.NONE { background: linear-gradient(135deg, #9ca3af, #6b7280); }
+
+  .result-card {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
+    min-height: 260px; background: linear-gradient(180deg, var(--card), var(--soft-bg));
+  }
+  .result-card .empty { color: var(--muted); text-align: center; padding-top: 84px; font-size: 13.5px; }
+  .result-card .empty::before { content: "📋"; display: block; font-size: 34px; margin-bottom: 12px; opacity: .55; }
+  .r-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .r-name { font-size: 17px; font-weight: 700; line-height: 1.45; }
+  .r-seq {
+    color: var(--accent); font-size: 12px; font-weight: 700;
+    background: var(--accent-soft); border-radius: 14px; padding: 3px 10px;
+  }
+  .kv { margin-top: 12px; display: grid; grid-template-columns: 118px 1fr; gap: 0; font-size: 13px; border-top: 1px solid var(--line-soft); }
+  .kv .k { color: var(--muted); padding: 6px 0; border-bottom: 1px dashed var(--line-soft); }
+  .kv .v { font-family: Consolas, monospace; word-break: break-all; padding: 6px 0; border-bottom: 1px dashed var(--line-soft); }
+  .chain-box {
+    margin-top: 12px; background: linear-gradient(135deg, var(--info-bg), var(--info-bg));
+    border: 1px solid var(--info-border); border-radius: 9px; padding: 10px 14px;
+    display: grid; grid-template-columns: 118px 1fr; gap: 4px 10px; font-size: 13px;
+  }
+  .chain-box .k { color: var(--muted); padding: 3px 0; }
+  .chain-box .v { font-family: Consolas, monospace; font-weight: 700; padding: 3px 0; word-break: break-all; }
+  details { margin-top: 12px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; user-select: none; }
+  details summary:hover { color: var(--accent); }
+  details pre {
+    background: var(--soft-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-size: 12px; overflow: auto; max-height: 340px; margin-top: 8px;
+  }
+
+  /* 分组溯源：逐层判定过程（与桌面端「分组溯源」区块同构） */
+  .trace-box { margin-top: 12px; background: var(--soft-bg); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .trace-head { display: flex; align-items: center; gap: 9px; padding: 9px 13px 5px; font-size: 13px; font-weight: 600; }
+  .trace-head .sub { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .trace-step { display: flex; border-top: 1px solid var(--line-soft); }
+  .trace-bar { width: 3px; flex: none; background: var(--border-strong); }
+  .trace-bar.hit { background: var(--accent); }
+  .trace-bar.warn { background: var(--warn); }
+  .trace-body { flex: 1; min-width: 0; padding: 4px 13px 7px; }
+  .trace-lhead { display: flex; align-items: center; gap: 7px; padding: 3px 0 1px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .trace-step:first-of-type .trace-lhead { color: var(--text); }
+  .trace-pill { font-size: 11.5px; font-weight: 600; border-radius: 9px; padding: 1px 7px; border: 1px solid var(--border); background: var(--card); color: var(--muted); }
+  .trace-pill.hit { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+  .trace-pill.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+  .trace-pill.skip { color: var(--faint); }
+  .trace-rule { color: var(--faint); font-size: 11.5px; font-weight: 400; }
+  .trace-title { font-size: 12.5px; color: var(--muted); padding-bottom: 1px; }
+  .trace-title.hit { color: var(--accent); }
+  .trace-title.warn { color: var(--warn); }
+  .trace-fact { display: grid; grid-template-columns: 96px 1fr; gap: 8px; font-size: 12px; }
+  .trace-fact .fk { color: var(--faint); padding: 2px 0; }
+  .trace-fact .fv { font-family: Consolas, monospace; word-break: break-all; padding: 2px 0; }
+  .trace-fact .fv.ok { color: var(--ok); }
+  .trace-fact .fv.warn { color: var(--warn); }
+
+  .batch-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  textarea#batchText {
+    /* 宽屏下 110px 的输入框会让整页显得空 —— 按视口给高度，最多 320px */
+    width: 100%; height: clamp(150px, 30vh, 320px); border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 10px; font-size: 12px; font-family: Consolas, monospace; resize: vertical;
+    color: var(--text); background: var(--input-bg);
+  }
+  textarea#batchText:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .hint { color: var(--muted); font-size: 12px; margin: 6px 0 10px; }
+  .summary {
+    display: flex; gap: 16px; margin: 12px 0; font-size: 13px; flex-wrap: wrap;
+    background: var(--accent-soft); border: 1px solid var(--info-border); border-radius: 9px; padding: 9px 14px;
+  }
+  .summary b { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { border-bottom: 1px solid var(--line-soft); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--soft-bg); font-weight: 600; position: sticky; top: 0; z-index: 1; box-shadow: 0 1px 0 var(--border); white-space: nowrap; }
+  /* 表格单行化（2026-10-30）：行高固定 26/34 后，换行会把两行文字压进一行高度里互相重叠。
+     与桌面端同一条规则：文本列一律单行 + 省略号 + hover 看全文，详情卡里才展开。 */
+  #pubTable, #lxTable, #dzTable, #gfTable { table-layout: fixed; }
+  #pubTable td, #lxTable td, #dzTable td, #gfTable td {
+    height: var(--row-h); padding: 0 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* 展开的详情行不参与单行规则（里面有卡片和多行正文） */
+  tr.lx-detail > td, tr.dz-detail > td {
+    height: auto; padding: 0; white-space: normal; overflow: visible; text-overflow: clip;
+  }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody tr:hover { background: var(--accent-soft); }
+  td.mono, td.mono-col { font-family: Consolas, "JetBrains Mono", monospace; }
+  td.ellip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+
+  /* 病种库查询 */
+  .pub-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .pub-tabs a {
+    display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
+    border: 1px solid var(--border); border-radius: 20px; padding: 4px 13px;
+    font-size: 12.5px; color: var(--muted); background: var(--card); transition: all .15s;
+  }
+  .pub-tabs a:hover { border-color: var(--accent); color: var(--accent); }
+  .pub-tabs a b { font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .pub-tabs a.on { background: var(--accent); border-color: var(--accent); color: var(--white); font-weight: 600; box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+  .pub-tabs a.on b { color: rgba(255,255,255,.8); }
+  .lib-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .lib-toolbar input {
+    height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px;
+    flex: 1 1 240px; min-width: 160px; background: var(--input-bg); color: var(--text);
+  }
+  /* 上面这条对勾选框也生效：320px 宽的复选框会把「仅有耗材」四个字推到很远处（实测过） */
+  .lib-toolbar input[type="checkbox"] {
+    width: 14px; height: 14px; padding: 0; flex: none; accent-color: var(--accent);
+  }
+  /* 查询/导出按钮不再被输入框挤成两行 */
+  .lib-toolbar button, .lib-toolbar select, .lib-toolbar label { flex: none; }
+  .lib-toolbar select { max-width: 260px; }
+  .lib-toolbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  /* 「仅有耗材」「仅看收藏」这类紧贴文字的勾选标签 */
+  .lib-toolbar label.cbx-lbl {
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+
+  /* 病种库右键菜单 / 轻提示：颜色一律走变量，深色主题下不闪白块 */
+  .ctx-menu {
+    position: fixed; z-index: 300; min-width: 224px; max-width: 340px; padding: 6px;
+    background: var(--card); border: 1px solid var(--border-strong);
+    border-radius: 10px; box-shadow: var(--shadow);
+    font-size: 12.5px; color: var(--text); user-select: none;
+  }
+  .ctx-menu .it { padding: 7px 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ctx-menu .it:hover { background: var(--accent-soft); color: var(--accent); }
+  .ctx-menu .sep { height: 1px; margin: 5px 6px; background: var(--border); }
+  .toast {
+    position: fixed; left: 50%; bottom: 42px; transform: translateX(-50%);
+    z-index: 320; padding: 9px 16px; border-radius: 9px;
+    background: var(--accent); color: var(--white); font-size: 12.5px;
+    box-shadow: var(--shadow); pointer-events: none;
+  }
+  .lib-toolbar select {
+    height: 34px; padding: 0 26px 0 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px;
+    background: var(--card); color: var(--text); cursor: pointer; max-width: 260px;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%238692a4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center;
+  }
+  .lib-toolbar select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  /* ===== 解读辅导 / 使用说明 折叠卡片 ===== */
+  .view-toggle { display: inline-flex; gap: 0; background: var(--seg-bg); border-radius: 9px; padding: 3px; }
+  .view-toggle button {
+    border: none; background: transparent; padding: 6px 16px; border-radius: 7px;
+    font-size: 13px; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .view-toggle button b { font-size: 11px; background: var(--seg-bg); color: var(--muted); border-radius: 999px; padding: 1px 7px; font-weight: 600; }
+  .view-toggle button.on { background: var(--card); color: var(--accent); font-weight: 700; box-shadow: 0 1px 4px rgba(30,100,200,.15); }
+  .view-toggle button.on b { background: var(--accent); color: var(--white); }
+  .jd-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: var(--card); overflow: hidden; transition: box-shadow .15s; }
+  .jd-item:hover { box-shadow: 0 2px 10px rgba(30,100,200,.10); }
+  .jd-q {
+    display: flex; align-items: center; gap: 10px; padding: 11px 16px; cursor: pointer; user-select: none;
+    font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.5;
+  }
+  .jd-q .tag {
+    flex: none; font-size: 11px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft, #eaf2fd); border: 1px solid var(--info-border); border-radius: 999px; padding: 2px 9px;
+  }
+  .jd-q .arrow { margin-left: auto; flex: none; color: var(--faint); font-size: 12px; transition: transform .15s; }
+  .jd-item.open .jd-q .arrow { transform: rotate(90deg); color: var(--accent); }
+  .jd-item.open { border-color: var(--accent-line); }
+  .jd-a { display: none; padding: 0 16px 13px 16px; font-size: 13px; color: var(--info-text); line-height: 1.85; white-space: pre-wrap; border-top: 1px dashed var(--line-soft); padding-top: 11px; }
+  .jd-item.open .jd-a { display: block; background: var(--soft-bg); }
+  /* 表格区域吃到视口底部再多留一点：大屏不再出现「表格只有半截、下面一片白」 */
+  .tbl-wrap {
+    max-height: clamp(320px, calc(100vh - 300px), 1000px);
+    overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+  }
+  .err { color: var(--danger); font-size: 13px; margin-top: 8px; }
+
+  /* ===== 病种库/立项指南查询表格: 固定行高/列宽，紧凑单行省略 ===== */
+  #pubTable, #lxTable, #jdTable, #dzTable, #gfTable { table-layout: fixed; }
+  #pubTable th, #pubTable td, #lxTable th, #lxTable td, #jdTable th, #jdTable td, #dzTable th, #dzTable td, #gfTable th, #gfTable td {
+    height: var(--row-h); padding: 0 10px; line-height: var(--row-h);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    box-sizing: border-box;
+  }
+  #pubTable th, #lxTable th, #jdTable th,
+  #dzTable th, #gfTable th {
+    height: 36px; line-height: 36px; font-size: 12px; color: var(--muted);
+    background: var(--soft-bg); font-weight: 600; letter-spacing: .3px;
+    user-select: none; border-bottom: 1px solid var(--border);
+  }
+  #pubTable td, #lxTable td, #jdTable td { font-size: 12.5px; }
+  #pubTable td.mono-col, #lxTable td.mono-col, #jdTable td.mono-col { font-family: Consolas, monospace; font-size: 12px; }
+  #pubTable tbody tr, #lxTable tbody tr.lx-row, #jdTable tbody tr.lx-row { transition: background .1s; cursor: default; }
+  #lxTable tbody tr.lx-row { cursor: pointer; }
+  #pubTable tbody tr:nth-child(even), #lxTable tbody tr.lx-row:nth-child(even), #jdTable tbody tr.lx-row:nth-child(even) { background: var(--row-alt); }
+  #pubTable tbody tr:hover, #lxTable tbody tr.lx-row:hover, #jdTable tbody tr.lx-row:hover { background: var(--accent-soft); }
+  /* ---------- 展开详情卡（立项指南 / 德州物价 / 技术规范 / 解读辅导共用一套） ----------
+     版式以桌面端 DataGrid.RowDetailsTemplate 为准：浅灰底 + 10 圆角 + 12/14 内边距，
+     标题行 11px 编号胶囊 + 13.5px 名称 + 右侧「收起」，字段是「132px 标签 + 值」的单列。
+     之前网页版自己发明了 112px×2 的两列网格：同一个项目一行放两个字段、卡片矮一半，
+     值还会被挤成窄条 —— 同一个软件两种长相，这才是用户说的「版面不同」。 */
+  .lx-detail > td, .dz-detail > td {
+    background: var(--card) !important; white-space: normal !important;
+    height: auto !important; padding: 0 !important; line-height: normal !important;
+    overflow: visible !important; text-overflow: clip !important;
+  }
+  .dcard {
+    margin: 4px 10px 10px; padding: 12px 14px;
+    background: var(--soft-bg); border: 1px solid var(--border); border-radius: 10px;
+  }
+  /* 标题行：编号胶囊 + 名称 + 右侧「收起」，没有分隔线（桌面端也没有） */
+  .dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dhead .dcode {
+    flex: none; font-family: Consolas, "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+    color: var(--accent); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; letter-spacing: .2px;
+  }
+  .dhead .dname { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.45; min-width: 0; }
+  .dhead .dmeta {
+    flex: none; font-size: 11px; color: var(--accent);
+    background: var(--accent-soft); border-radius: 5px; padding: 1px 6px;
+  }
+  .dhead .dclose {
+    margin-left: auto; flex: none; border: 0; background: none; padding: 0; cursor: pointer;
+    font: inherit; font-size: 12.5px; color: var(--accent);
+  }
+  .dhead .dclose:hover { color: var(--accent-hover); text-decoration: underline; }
+  /* 字段：单列，标签列固定 132（与桌面端 Block.Tpl 的 ColumnDefinition 同宽） */
+  .dgrid {
+    display: grid; grid-template-columns: 132px minmax(0, 1fr);
+    row-gap: 4px; align-items: start;
+  }
+  .dl { font-size: 12.5px; color: var(--muted); line-height: 1.5; padding-top: 1px; }
+  .dv { font-size: 12.5px; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .dv.wide { grid-column: 2; }
+  .dv .ditem { margin: 0; }
+  /* 「…… 本类使用说明共 N 条」：桌面端是同色正文里的一行小字提示 */
+  /* 互相关联：与字段区之间留一条浅分隔线，读起来是「另一个话题」 */
+  .dxref { margin-top: 8px; }
+  .dxref .dgrid { padding-top: 8px; border-top: 1px dashed var(--line-soft); }
+  .dxlink { color: var(--accent); text-decoration: none; cursor: pointer; }
+  .dxlink:hover { text-decoration: underline; }
+  .dmore { margin-top: 2px; font-size: 12px; color: var(--accent); cursor: pointer; }
+  .dmore:hover { text-decoration: underline; }
+  .dqa { font-size: 12.5px; line-height: 1.7; color: var(--info-text); white-space: pre-wrap; }
+  /* 技术规范的三条量表：与桌面端 Meter.Bar 同尺寸（6px 圆角轨道、132 标签列、数字右对齐） */
+  .dmeters { margin: 2px 0 10px; }
+  .dmeter { display: grid; grid-template-columns: 132px minmax(0, 1fr); margin-bottom: 7px; }
+  .dmeter .dmlabel { font-size: 12.5px; color: var(--muted); }
+  .dmeter .dmhead { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+  .dmeter .dmval { font-family: Consolas, monospace; font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .dmeter .dmbar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .dmeter .dmbar > i { display: block; height: 100%; border-radius: 3px; }
+  .dv .chip {
+    display: inline-block; min-width: 22px; text-align: center;
+    font-family: Consolas, monospace; font-size: 10.5px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft, #eaf2fd); border: 1px solid var(--info-border);
+    border-radius: 5px; padding: 0 4px; margin-right: 7px; vertical-align: 1px;
+  }
+  /* 展开时高亮来源行：表格很长时才知道自己在看哪一条 */
+  #dzTable tbody tr.open > td, #lxTable tbody tr.open > td,
+  #gfTable tbody tr.open > td { background: var(--accent-soft); }
+  #dzTable tbody tr.open > td:first-child, #lxTable tbody tr.open > td:first-child,
+  #gfTable tbody tr.open > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+  /* ===== 联想下拉 ===== */
+  .ac-wrap { position: relative; }
+  .ac-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+    background: var(--card); border: 1px solid var(--border-strong); border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(23,33,46,.16); max-height: 420px; overflow: auto; display: none;
+  }
+  .ac-list.show { display: block; }
+  .ac-item { padding: 7px 12px; cursor: pointer; border-bottom: 1px solid var(--line-soft); line-height: 1.5; transition: background .1s; }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item.on { background: var(--accent); color: var(--white); }
+  .ac-item:hover:not(.on) { background: var(--accent-soft); }
+  .ac-item.on .dips, .ac-item.on .map { color: rgba(255,255,255,.85); }
+  .ac-item .code { font-family: Consolas, monospace; font-weight: 700; }
+  .ac-item .nm { font-size: 12.5px; }
+  .ac-item .map { font-size: 11px; color: var(--ok); }
+  .ac-item .dips { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ac-item.grayed { color: var(--faint); }
+  .ac-item.grayed .code { text-decoration: line-through; }
+  .ac-item.on.grayed, .ac-item.grayed:hover { background: var(--faint); color: var(--white); }
+  .ac-tag {
+    font-size: 10px; background: var(--ok-bg); color: var(--ok);
+    border: 1px solid var(--ok-line); border-radius: 8px; padding: 0 7px; margin-left: 5px; font-weight: 600;
+  }
+  .ac-item.on .ac-tag { background: rgba(255,255,255,.2); color: var(--white); border-color: rgba(255,255,255,.35); }
+  .ac-empty { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
+  .ac-more { padding: 8px 12px; font-size: 11px; color: var(--muted); text-align: center; background: var(--soft-bg); border-top: 1px solid var(--line-soft); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--white); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== 前台主题选择（五套，与桌面端 ThemeCatalog 同一份色值） ===== */
+  .theme-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted); background: var(--card); cursor: pointer; font-family: inherit;
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); transition: all .15s;
+  }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .theme-btn.on { color: var(--accent); border-color: var(--accent-line); }
+
+  #thPanel {
+    position: fixed; top: calc(var(--nav-h) + 4px); right: 20px;
+    width: 512px; max-width: calc(100vw - 32px);
+    background: var(--card); border: 1px solid var(--border-strong); border-radius: 12px;
+    box-shadow: var(--shadow); z-index: 210; overflow: hidden; display: none;
+  }
+  #thPanel.on { display: block; }
+  .th-head { padding: 11px 16px; background: var(--soft-bg); border-bottom: 1px solid var(--border); }
+  .th-head b { font-size: 13px; color: var(--text); }
+  .th-head small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+  .th-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px; }
+  .th-card {
+    position: relative; text-align: center; padding: 8px; border-radius: 12px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--soft-bg);
+    transition: border-color .15s, background .15s;
+  }
+  .th-card:hover { border-color: var(--accent); }
+  .th-card.on { border-color: var(--accent); background: var(--accent-soft); }
+  .th-sw {
+    height: 46px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr .7fr;
+  }
+  .th-sw i { display: block; }
+  .th-card .nm { font-size: 12.5px; font-weight: 600; margin-top: 8px; color: var(--text); }
+  .th-card .ht { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .th-tick {
+    position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: var(--white); font-size: 10px; line-height: 18px; display: none;
+  }
+  .th-card.on .th-tick { display: block; }
+  .th-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 8px 16px; background: var(--soft-bg); border-top: 1px solid var(--border);
+    font-size: 11.5px; color: var(--muted);
+  }
+  .th-foot button {
+    font-family: inherit; font-size: 11.5px; color: var(--accent); background: var(--card);
+    border: 1px solid var(--accent-line); border-radius: 7px; padding: 4px 10px; cursor: pointer;
+  }
+  .th-foot button:hover { background: var(--accent-soft); border-color: var(--accent); }
+  @media (max-width: 560px) { .th-list { grid-template-columns: repeat(2, 1fr); } #thPanel { right: 10px; } }
+
+  /* ===== 消息推送（后台「消息推送」页发布 → 前台在这里展示） ===== */
+  .nb-bell {
+    position: relative; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted); background: var(--card); cursor: pointer; font-family: inherit;
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); transition: all .15s;
+  }
+  .nb-bell:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .nb-bell.on { color: var(--accent); border-color: var(--accent-line); }
+  .nb-bell .ico { font-size: 13.5px; line-height: 1; }
+  .nb-bell .badge {
+    min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; margin-left: 1px;
+    background: var(--danger); color: var(--white); font-size: 10.5px; font-weight: 700; line-height: 1;
+    display: none; align-items: center; justify-content: center;
+  }
+  .nb-bell .badge.on { display: inline-flex; }
+
+  /* 钉住的消息：导航栏下方常驻横幅（单行，点「查看」看全文） */
+  #nbBar {
+    position: fixed; left: 0; right: 0; top: var(--nav-h); z-index: 99; display: none;
+    background: var(--card); border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  #nbBar.on { display: block; }
+  #nbBar .in { max-width: 1180px; margin: 0 auto; padding: 8px 20px; display: flex; align-items: center; gap: 9px; }
+  #nbBar .ic { flex: none; font-size: 13.5px; }
+  #nbBar .tx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--info-text); }
+  #nbBar .tx b { color: var(--text); font-weight: 700; margin-right: 7px; }
+  #nbBar .go {
+    flex: none; border: 1px solid var(--accent-line); background: var(--card); color: var(--accent); cursor: pointer; font-family: inherit;
+    font-size: 12px; padding: 3px 11px; border-radius: 20px;
+  }
+  #nbBar .go:hover { background: var(--accent-soft); }
+  #nbBar .x {
+    flex: none; border: none; background: none; color: var(--muted); cursor: pointer;
+    font-size: 15px; line-height: 1; padding: 3px 5px; border-radius: 6px;
+  }
+  #nbBar .x:hover { background: var(--bg); color: var(--text); }
+  #nbBar.lv-warn { background: var(--card)af0; border-bottom-color: var(--warn-line); }
+  #nbBar.lv-danger { background: var(--danger-bg); border-bottom-color: var(--danger-line); }
+  /* 有横幅时把正文整体让下去，两者不重叠 */
+  body.nb-on { padding-top: calc(var(--nav-h) + var(--nb-h, 42px)); }
+
+  /* 消息中心抽屉 */
+  #nbMask {
+    position: fixed; inset: 0; z-index: 400; background: var(--overlay);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  #nbMask.on { opacity: 1; pointer-events: auto; }
+  #nbDrawer {
+    position: fixed; top: 0; right: 0; z-index: 401; width: 400px; max-width: 92vw; height: 100vh;
+    display: flex; flex-direction: column; background: var(--card); box-shadow: -8px 0 32px rgba(23,33,46,.16);
+    transform: translateX(102%); transition: transform .24s cubic-bezier(.3,.7,.4,1);
+  }
+  #nbDrawer.on { transform: none; }
+  .nd-head { display: flex; align-items: center; gap: 8px; padding: 15px 18px; border-bottom: 1px solid var(--border); }
+  .nd-head h3 { font-size: 15px; font-weight: 700; }
+  .nd-head .cnt { font-size: 11.5px; color: var(--muted); background: var(--bg); border-radius: 10px; padding: 2px 8px; }
+  .nd-head .sp { flex: 1; }
+  .nd-head .mi {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; font-family: inherit;
+    font-size: 11.5px; padding: 4px 10px; border-radius: 7px;
+  }
+  .nd-head .mi:hover { border-color: var(--accent); color: var(--accent); }
+  .nd-list { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  .nd-item {
+    position: relative; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 32px 12px 16px; margin-bottom: 10px; background: var(--card); overflow: hidden;
+  }
+  .nd-item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .nd-item.lv-warn::before { background: var(--warn); }
+  .nd-item.lv-danger::before { background: var(--danger); }
+  .nd-item .tt { font-size: 13.5px; font-weight: 700; line-height: 1.5; }
+  .nd-item .tm { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .nd-item .bd { font-size: 12.5px; color: var(--muted); margin-top: 7px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; }
+  .nd-item .del {
+    position: absolute; top: 7px; right: 7px; border: none; background: none; cursor: pointer;
+    color: var(--faint); font-size: 15px; line-height: 1; padding: 3px 5px; border-radius: 6px;
+  }
+  .nd-item .del:hover { background: var(--bg); color: var(--danger); }
+  .nd-item .newtag {
+    display: inline-block; font-size: 10px; font-weight: 700; color: var(--white); background: var(--danger);
+    border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px;
+  }
+  .nd-item.fresh { border-color: var(--accent-line); box-shadow: 0 0 0 3px rgba(29,111,224,.07); }
+  .nd-empty { text-align: center; color: var(--muted); font-size: 12.5px; padding: 46px 0; line-height: 2; }
+  .nd-foot { padding: 11px 18px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  /* ==========================================================================
+     与桌面端对齐的通用件（2026-10-30）
+     —— 分页条（跳页 / 每页条数）、行高密度、序号承接提示。
+     桌面端这些都在 App.xaml 里做成全局资源，网页端同样只写一份，六个页面共用。
+     ========================================================================== */
+  html { --row-h: 26px; }                      /* 紧凑（出厂默认，同桌面端 CompactRows=true） */
+  html[data-density="normal"] { --row-h: 34px; }
+  .tbl-wrap td { height: var(--row-h); }
+
+  .pager-bar {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    font-size: 12.5px; color: var(--muted); flex-wrap: wrap;
+  }
+  .pager-bar .grow { margin-left: auto; }
+  .pager-bar button { padding: 4px 12px; }
+  .pager-bar button:disabled { opacity: .45; cursor: not-allowed; }
+  .pager-bar input {
+    width: 54px; padding: 4px 6px; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--input-bg); color: var(--text);
+    font-family: Consolas, "JetBrains Mono", monospace; font-size: 12.5px;
+  }
+  .pager-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .pager-bar select {
+    padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--input-bg); color: var(--text); font-size: 12.5px;
+  }
+  .pager-bar .cur { color: var(--text); font-weight: 600; }
+
+  /* 操作行：统计（左，超长省略）+ 导出组（右，固定）。桌面端也是这条基线 */
+  .act-row {
+    display: flex; align-items: center; gap: 12px; margin: 0 0 8px; min-height: 28px;
+  }
+  .act-row .stat-line { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .act-row .act-right { flex: none; display: flex; align-items: center; gap: 8px; }
+  .act-row .act-right select { max-width: 220px; }
+  .stat-line { font-size: 12.5px; color: var(--muted); }
+
+  /* 序号承接提示：区段各自从 1 编号，切页签时要说明「接着前一段数」 */
+  .seq-hint {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px;
+    padding: 5px 11px; border-radius: 8px; font-size: 12px;
+    color: var(--muted); background: var(--soft-bg); border: 1px solid var(--border);
+  }
+  .seq-hint b { color: var(--accent); font-weight: 600; }
+
+  /* 物价：涨红跌绿（中国行情惯例），与桌面端 B.Danger / B.Ok 同色 */
+  .num-up { color: var(--danger); font-variant-numeric: tabular-nums; }
+  .num-down { color: var(--ok); font-variant-numeric: tabular-nums; }
+  .num-flat { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fav-star { cursor: pointer; color: var(--faint); font-size: 15px; user-select: none; }
+  .fav-star.on { color: #f59e0b; }
+  .stat-line { font-size: 12.5px; color: var(--muted); }
+  .stat-line b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lx-sec { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ==========================================================================
+     病理开具指引（右侧抽屉，对齐桌面端 GuidePanel）
+     —— 平时只在窗口右边缘挂一条竖排标签，点开从右侧滑出：
+        左：疾病系统；右：档位表；底：收费明细 + 数量 / 合计。
+     数据与报价全部来自 /api/zhijian（Core 一处实现），前端不重算金额。
+     ========================================================================== */
+  .zg-tab {
+    position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+    z-index: 410; writing-mode: vertical-rl; letter-spacing: 2px;
+    padding: 14px 8px; border: none; border-radius: 10px 0 0 10px;
+    background: var(--accent); color: #fff; cursor: pointer;
+    font-family: inherit; font-size: 12.5px; font-weight: 600;
+    box-shadow: -3px 0 12px rgba(15,23,42,.16);
+  }
+  .zg-tab:hover { background: var(--accent-hover, #1558b8); }
+  body.zg-on .zg-tab { display: none; }
+
+  /* 工具栏 = 两层：#zgHome 工具列表 / #zgGuide 具体工具；以后加工具就加一层 .zg-view */
+  .zg-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .zg-home { flex: 1; overflow-y: auto; padding: 14px 16px 16px; display: flex; flex-direction: column; }
+  .zg-sec { font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 0 0 9px; }
+  .zg-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .zg-tool {
+    display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer;
+    min-height: 66px; padding: 12px 13px; border-radius: 10px; font-family: inherit;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  .zg-tool:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .zg-tool .ic {
+    width: 34px; height: 34px; border-radius: 9px; flex: none; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700;
+  }
+  .zg-tool b { font-size: 13.5px; }
+  .zg-tool small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .zg-tool .go { margin-left: auto; color: var(--faint); font-size: 17px; }
+  .zg-slot {
+    display: flex; flex-direction: column; justify-content: center; min-height: 66px;
+    padding: 11px 13px; border: 1px dashed var(--border-strong); border-radius: 10px;
+    color: var(--faint); font-size: 10.5px; line-height: 1.55;
+  }
+  .zg-slot b { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .zg-hint {
+    margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft);
+    font-size: 11px; color: var(--faint); line-height: 1.75;
+  }
+  .zg-back {
+    border: none; background: none; cursor: pointer; color: var(--muted); border-radius: 7px;
+    font-size: 17px; line-height: 1; padding: 4px 6px; margin-right: 1px;
+  }
+  .zg-back:hover { background: var(--bg); color: var(--text); }
+
+  #zgMask {
+    position: fixed; inset: 0; z-index: 420; background: rgba(15,23,40,.22);
+    opacity: 0; pointer-events: none; transition: opacity .18s;
+  }
+  #zgMask.on { opacity: 1; pointer-events: auto; }
+  #zgBox {
+    position: fixed; z-index: 421; top: 0; right: 0; bottom: 0;
+    width: 784px; max-width: 96vw; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--card); border-left: 1px solid var(--border);
+    box-shadow: -18px 0 48px rgba(15,23,42,.18);
+    transform: translateX(100%); pointer-events: none;
+    transition: transform .2s cubic-bezier(.2,.8,.3,1);
+  }
+  #zgBox.on { transform: translateX(0); pointer-events: auto; }
+  .zg-head {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px 11px 16px;
+    background: var(--soft-bg); border-bottom: 1px solid var(--border);
+  }
+  .zg-logo {
+    width: 32px; height: 32px; border-radius: 8px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff; font-size: 14px; font-weight: 700;
+  }
+  .zg-head b { font-size: 14px; }
+  .zg-head small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .zg-sp { flex: 1; }
+  .zg-lv { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+  .zg-lv button {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    font-family: inherit; font-size: 12px; padding: 4px 11px; border-radius: 12px; cursor: pointer;
+  }
+  .zg-lv button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .zg-x {
+    border: none; background: none; cursor: pointer; color: var(--muted);
+    font-size: 14px; padding: 5px 8px; border-radius: 7px; line-height: 1;
+  }
+  .zg-x:hover { background: var(--bg); color: var(--text); }
+  .zg-bar {
+    display: flex; align-items: center; gap: 8px; padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .zg-bar input {
+    flex: 1; min-width: 0; padding: 6px 10px; font-size: 12.5px; font-family: inherit;
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--input-bg); color: var(--text);
+  }
+  .zg-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .zg-bar select {
+    padding: 6px 8px; font-size: 12.5px; border-radius: 8px; font-family: inherit;
+    border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text);
+  }
+  .zg-stat { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .zg-body { flex: 1; display: flex; gap: 12px; padding: 11px 16px 9px; min-height: 0; }
+  .zg-sys {
+    width: 152px; flex: none; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--soft-bg); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .zg-h { font-size: 11.5px; font-weight: 700; color: var(--muted); padding: 9px 12px 6px; }
+  .zg-syslist { flex: 1; overflow-y: auto; padding: 0 6px 8px; }
+  .zg-sysitem {
+    display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 7px;
+    font-size: 12.5px; cursor: pointer; color: var(--text);
+  }
+  .zg-sysitem:hover { background: var(--row-hover); }
+  .zg-sysitem.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .zg-sysitem > span:first-child { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zg-sysitem .n { flex: none; font-size: 11px; color: var(--faint); font-weight: 400; }
+  .zg-tbl { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .zg-th, .zg-tr { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; }
+  .zg-th {
+    padding: 8px 12px; font-size: 11.5px; font-weight: 700; color: var(--muted);
+    background: var(--soft-bg); border-bottom: 1px solid var(--border);
+  }
+  .zg-rows { flex: 1; overflow-y: auto; }
+  .zg-tr { padding: 6px 12px; font-size: 12.5px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+  .zg-tr:hover { background: var(--row-hover); }
+  .zg-tr.on { background: var(--accent-soft); }
+  .zg-tr .smp { line-height: 1.5; word-break: break-word; }
+  .zg-tr .tier { font-family: Consolas, monospace; font-size: 12px; color: var(--accent); }
+  .zg-empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .zg-quote {
+    display: grid; grid-template-columns: minmax(0, 1fr) 268px; gap: 16px;
+    padding: 10px 16px 11px; border-top: 1px solid var(--border); background: var(--soft-bg);
+  }
+  .zg-pick { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .zg-picks { font-size: 11.5px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
+  .zg-lines .zg-line { display: grid; grid-template-columns: minmax(0,1fr) auto 76px; gap: 8px; padding: 2px 0; align-items: center; }
+  .zg-line .nm { font-size: 12px; }
+  .zg-line .nt { font-size: 10.5px; color: var(--muted); margin-left: 6px; }
+  .zg-line .qt { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .zg-line .am { font-size: 12.5px; font-weight: 700; font-family: Consolas, monospace; text-align: right; }
+  .zg-card { border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; background: var(--card); }
+  .zg-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .zg-row:first-child { margin-top: 0; }
+  .zg-row .zg-h { padding: 0; }
+  .zg-step { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .zg-step button {
+    width: 26px; height: 26px; border-radius: 7px; cursor: pointer; font-size: 14px;
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--text);
+  }
+  .zg-step button:hover { border-color: var(--accent); color: var(--accent); }
+  .zg-step input {
+    width: 54px; height: 26px; text-align: center; font-family: Consolas, monospace; font-size: 13px; font-weight: 700;
+    border: 1px solid var(--border-strong); border-radius: 7px; background: var(--input-bg); color: var(--text);
+  }
+  .zg-card select {
+    margin-left: auto; padding: 5px 8px; font-size: 12px; border-radius: 7px; font-family: inherit;
+    border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text);
+  }
+  .zg-total {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-top: 9px; padding: 7px 12px; border-radius: 9px; background: var(--accent-soft);
+    font-size: 12px; color: var(--accent);
+  }
+  .zg-total b { font-size: 22px; line-height: 1; font-family: Consolas, monospace; }
+  .zg-btn {
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--text); cursor: pointer;
+    font-family: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; white-space: nowrap;
+  }
+  .zg-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .zg-foot {
+    display: flex; align-items: center; gap: 12px; padding: 8px 16px 10px;
+    border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); flex-wrap: wrap;
+  }
+  .zg-foot button { border: none; background: none; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  .zg-foot .rules { flex: 1 1 100%; line-height: 1.7; color: var(--muted); white-space: pre-wrap; max-height: 132px; overflow-y: auto; }
+  .zg-foot .rules.hidden, .zg-foot .spec.hidden { display: none; }
+  .zg-foot .spec { flex: 1 1 100%; max-height: 148px; overflow-y: auto; line-height: 1.6; }
+  .zg-foot .spec b { color: var(--text); font-size: 11.5px; }
+
+  /* ---------- 基本物耗指引（工具栏第三个工具，对齐桌面端 WuhaoPanel） ---------- */
+  .zgw-tabs { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .zgw-tab {
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--muted); cursor: pointer;
+    font-family: inherit; font-size: 12px; padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+  }
+  .zgw-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .zgw-tab.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .zgw-bar { padding: 11px 16px 10px; border-bottom: 1px solid var(--border); }
+  .zgw-bar input, .zgw-bar2 input {
+    width: 100%; height: 34px; padding: 0 11px; font-family: inherit; font-size: 13.5px;
+    border: 1px solid var(--border-strong); border-radius: 8px; background: var(--input-bg); color: var(--text);
+  }
+  .zgw-bar input:focus, .zgw-bar2 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .zgw-bar2 { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+  .zgw-bar2 input { flex: 1; min-width: 0; height: 30px; font-size: 12.5px; }
+  .zgw-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+  .zgw-chip-h { font-size: 11.5px; color: var(--faint); margin-right: 2px; }
+  .zgw-chip {
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+    font-family: inherit; font-size: 11.5px; padding: 3px 10px; border-radius: 999px;
+  }
+  .zgw-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .zgw-scroll { flex: 1; overflow-y: auto; padding: 14px 16px 16px; min-height: 0; }
+  .zgw-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--soft-bg); }
+  .zgw-card.no { background: #fdecec; border-color: #efb9b9; }
+  .zgw-card.yes { background: var(--accent-soft); border-color: #b7d3f6; }
+  .zgw-card.chk { background: #fef7e8; border-color: #eed49b; }
+  .zgw-card.ded { background: #e6f4f1; border-color: #b7ddd7; }
+  .zgw-card .hd { display: flex; align-items: center; gap: 10px; }
+  .zgw-card .bdg {
+    font-size: 11.5px; font-weight: 700; color: #fff; background: var(--muted);
+    border-radius: 6px; padding: 3px 8px; flex: none;
+  }
+  .zgw-card.no .bdg { background: #dc2626; }
+  .zgw-card.yes .bdg { background: var(--accent); }
+  .zgw-card.chk .bdg { background: #d97706; }
+  .zgw-card.ded .bdg { background: #0f766e; }
+  .zgw-card h3 { margin: 0; font-size: 17px; line-height: 1.35; }
+  .zgw-card.no h3 { color: #b91c1c; }
+  .zgw-card p { margin: 9px 0 0; font-size: 12.5px; line-height: 1.72; color: var(--text); }
+  .zgw-card p.hint { font-size: 12px; color: var(--muted); }
+  .zgw-near { margin-top: 12px; padding: 9px 11px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); }
+  .zgw-near b { font-size: 11.5px; color: var(--muted); }
+  .zgw-near div { margin-top: 5px; font-size: 12px; line-height: 1.7; }
+  .zgw-near .n { color: var(--muted); font-size: 11px; margin-left: 6px; }
+  .zgw-tip { margin: 12px 2px 0; font-size: 11px; line-height: 1.75; color: var(--faint); }
+  .zgw-banner {
+    padding: 10px 16px; background: #fef7e8; border-bottom: 1px solid var(--border);
+    font-size: 11.5px; line-height: 1.75; color: #92400e;
+  }
+  .zgw-body { flex: 1; display: flex; gap: 12px; padding: 11px 16px 9px; min-height: 0; }
+  .zgw-groups {
+    width: 176px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--soft-bg); overflow: hidden;
+  }
+  .zgw-groups .zg-h { padding: 9px 12px 6px; }
+  .zgw-glist { flex: 1; overflow-y: auto; padding: 0 6px 8px; }
+  .zgw-gi {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px;
+    cursor: pointer; font-size: 12.5px; color: var(--text);
+  }
+  .zgw-gi:hover { background: var(--row-hover); }
+  .zgw-gi.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .zgw-gi span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zgw-gi .n { flex: none; font-size: 11px; color: var(--faint); font-weight: 400; }
+  .zgw-tbl { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .zgw-th, .zgw-tr { display: grid; grid-template-columns: 186px 68px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .zgw-tbl.c4 .zgw-th, .zgw-tbl.c4 .zgw-tr { grid-template-columns: 208px 78px 70px minmax(0, 1fr); }
+  .zgw-th {
+    padding: 7px 12px; background: var(--soft-bg); border-bottom: 1px solid var(--border);
+    font-size: 11.5px; font-weight: 700; color: var(--muted);
+  }
+  .zgw-rows { flex: 1; overflow-y: auto; }
+  .zgw-tr { padding: 6px 12px; font-size: 12.5px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+  .zgw-tr:hover { background: var(--row-hover); }
+  .zgw-tr.on { background: var(--accent-soft); }
+  .zgw-tr .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zgw-tr .cv { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .zgw-tr .nt { font-size: 12px; color: var(--muted); line-height: 1.5; word-break: break-word; }
+  .zgw-tr .nt b { display: block; color: var(--text); font-weight: 500; font-size: 12px; }
+  .zgw-verdict { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; background: var(--soft-bg); color: var(--muted); }
+  .zgw-verdict.yes { background: var(--accent-soft); color: var(--accent); }
+  .zgw-verdict.no { background: #fbe0e0; color: #b91c1c; }
+  .zgw-verdict.chk { background: #fdf0d5; color: #92400e; }
+  .zgw-verdict.ded { background: #e6f4f1; color: #0f766e; }
+  .zgw-foot { padding: 9px 16px 10px; border-top: 1px solid var(--border); background: var(--soft-bg);
+    max-height: 150px; overflow-y: auto; }
+  .zgw-foot b { font-size: 12.5px; }
+  .zgw-foot p { margin: 3px 0 0; font-size: 11px; line-height: 1.65; color: var(--muted); }
+  .zgw-rule {
+    border: 1px solid var(--border); border-radius: 8px; background: var(--soft-bg);
+    padding: 10px 12px; margin-bottom: 7px;
+  }
+  .zgw-rule .t { font-size: 12.5px; font-weight: 600; }
+  .zgw-rule .t i { font-style: normal; color: var(--accent); font-weight: 700; margin-right: 7px; }
+  .zgw-rule p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.72; color: var(--muted); }
+  .zgw-src { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin-bottom: 6px; }
+  .zgw-src .t { font-size: 12px; font-weight: 600; }
+  .zgw-src p { margin: 3px 0 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+  .zgw-stat { font-size: 12px; color: var(--muted); white-space: nowrap; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<!-- ============ 导航栏 ============ -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <div class="logo-box" id="navMark">DIP</div>
+      <div>
+        <div class="t1" id="navName">DIP 3.0 分组器</div>
+        <div class="t2" id="navSub">国家医保 DIP 3.0 分组方案</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <button id="tabSingle" class="active" onclick="switchTab('single')">单条分组</button>
+      <button id="tabBatch" onclick="switchTab('batch')">批量分组</button>
+      <button id="tabLib" onclick="switchTab('lib')">病种库查询</button>
+      <button id="tabLx" onclick="switchTab('lx')">立项指南查询</button>
+      <button id="tabDz" onclick="switchTab('dz')">德州物价</button>
+      <button id="tabGf" onclick="switchTab('gf')">项目技术规范</button>
+    </div>
+    <div class="nav-right">
+      <button class="theme-btn" id="densityBtn" onclick="denToggle()" title="表格行高：紧凑 / 标准（只影响本机）"><span>☰</span><span id="densityTxt">紧凑</span></button>
+      <button class="theme-btn" id="themeBtn" onclick="thToggle(event)" title="界面主题（只影响本机）"><span>🎨</span><span>主题</span></button>
+      <button class="nb-bell" id="nbBell" onclick="ndOpen()" title="消息中心"><span class="ico">🔔</span><span>消息</span><span class="badge" id="nbBadge"></span></button>
+      <a class="admin-link" href="/admin">⚙ 后台管理</a>
+    </div>
+  </div>
+</nav>
+
+<!-- 主题选择浮层：挂在导航外，fixed 定位到右上角 -->
+<div id="thPanel">
+  <div class="th-head"><b>界面主题</b><small>选中即生效，只影响本机显示</small></div>
+  <div class="th-list" id="thList"></div>
+  <div class="th-foot"><span id="thCur"></span><button onclick="thReset()">恢复默认</button></div>
+</div>
+
+<!-- 钉住的消息：常驻横幅 -->
+<div id="nbBar">
+  <div class="in">
+    <span class="ic" id="nbBarIc">📌</span>
+    <span class="tx" id="nbBarTx"></span>
+    <button class="go" onclick="ndOpen()">查看</button>
+    <button class="x" id="nbBarX" title="本机不再提示本条">✕</button>
+  </div>
+</div>
+
+<!-- 消息中心 -->
+<div id="nbMask" onclick="ndClose()"></div>
+<aside id="nbDrawer">
+  <div class="nd-head">
+    <h3>消息中心</h3>
+    <span class="cnt" id="ndCnt">0</span>
+    <span class="sp"></span>
+    <button class="mi" id="ndReadAll" onclick="ndReadAll()">全部已读</button>
+    <button class="mi" onclick="ndClose()">关闭</button>
+  </div>
+  <div class="nd-list" id="ndList"></div>
+  <div class="nd-foot" id="ndFoot">消息由管理后台推送，本页面每 60 秒自动检查一次更新。</div>
+</aside>
+
+<div class="wrap">
+
+<!-- ============ 单条分组 ============ -->
+<div id="panelSingle" class="panel">
+  <div class="page-title"><h2>单条分组</h2><span class="desc">输入病案诊断与手术信息，实时分组</span></div>
+  <div class="grid">
+    <div>
+      <div class="field"><label>主要诊断（ICD-10 编码或名称）*</label>
+        <div class="ac-wrap">
+          <input id="mainDiag" placeholder="A09.901 或 胃肠炎" autocomplete="off">
+          <div class="ac-list" id="acMainDiag"></div>
+        </div>
+      </div>
+      <div class="field"><label>其他诊断（多个用 | ; 分隔）</label>
+        <div class="ac-wrap">
+          <input id="otherDiags" placeholder="C34.900;P05.900" autocomplete="off">
+          <div class="ac-list" id="acOtherDiags"></div>
+        </div>
+      </div>
+      <div class="field"><label>主要手术操作编码（联动主诊断）</label>
+        <div class="ac-wrap">
+          <input id="mainProc" placeholder="99.2503 或 植皮术" autocomplete="off">
+          <div class="ac-list" id="acMainProc"></div>
+        </div>
+      </div>
+      <div class="field"><label>其他手术操作编码（多个用 | ; 分隔）</label>
+        <div class="ac-wrap">
+          <input id="otherProcs" placeholder="99.2800x005;40.5901" autocomplete="off">
+          <div class="ac-list" id="acOtherProcs"></div>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>年龄</label><input id="age" placeholder=""></div>
+        <div class="field"><label>单位</label>
+          <select id="ageUnit">
+            <option value=""></option>
+            <option value="岁">岁</option>
+            <option value="月">月</option>
+            <option value="天">天</option>
+            <option value="小时">小时</option>
+          </select>
+        </div>
+        <div class="field"><label>出生体重（克）</label><input id="birthWeight" placeholder="1200"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;margin:8px 0;cursor:pointer">
+        <input type="checkbox" id="useMappingSingle"> 启用诊断映射转换（ICD-10→医保编码）
+      </label>
+      <!-- 三个按钮同高（与桌面端 88 / 104 / 剩余 一致）：空态不是让人先翻文档，
+           而是点「填入示例」直接出一条结果 -->
+      <div class="btn-row" style="display:flex;gap:10px;margin-top:10px">
+        <button class="ghost" style="width:88px;height:38px" onclick="clearSingle()">清 空</button>
+        <button class="ghost" style="width:104px;height:38px" onclick="fillSample()">填入示例</button>
+        <button class="primary" id="btnGroup" style="flex:1;height:38px;padding:0" onclick="doGroup()">分 组</button>
+      </div>
+    </div>
+    <div class="result-card" id="singleResult">
+      <div class="empty">输入病案信息后点击「分组」</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 批量分组 ============ -->
+<div id="panelBatch" class="panel hidden">
+  <div class="page-title"><h2>批量分组</h2><span class="desc">上传 Excel 或直接粘贴表格批量分组，支持下载结果</span></div>
+  <div class="batch-tools">
+    <input type="file" id="batchFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="doBatchFile()">
+    <button class="primary" onclick="document.getElementById('batchFile').click()">上传病案 Excel</button>
+    <button class="ghost" onclick="location.href='/api/batch-template'">下载模板</button>
+    <button class="ghost" onclick="doBatchText()">粘贴表格分组</button>
+    <button class="ghost" id="btnDownload" onclick="doDownload()" style="display:none">下载结果 Excel</button>
+    <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="useMappingBatch"> 启用诊断映射转换
+    </label>
+  </div>
+  <textarea id="batchText" placeholder="在 Excel 中选中表格区域（含首行列名）复制，直接粘贴到这里，例如：
+病案号	主要诊断编码	主要手术操作编码
+MZ001	A09.901	45.1300x004
+MZ002	P07.100			5	天	1200"></textarea>
+  <div class="hint">不用记列的顺序——首行写好列名（病案号、主要诊断编码、主要手术操作编码等），下面的行按列填写即可；没有的列可以不填。也可以直接点「下载模板」按模板填写后上传。</div>
+  <div class="summary" id="batchSummary" style="display:none"></div>
+  <div class="err" id="batchErr"></div>
+  <div class="tbl-wrap" id="batchTableWrap" style="display:none">
+    <table id="batchTable">
+      <thead>
+        <tr><th>序号</th><th>病案号</th><th>主要诊断</th><th>主要手术</th><th>入组</th><th>组别</th><th>病种序号</th><th>分组名称 / 未入组原因</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 病种库查询 ============ -->
+<div id="panelLib" class="panel hidden">
+  <div class="page-title"><h2>病种库查询</h2><span class="desc">浏览 DIP 3.0 病种库全部区段，支持按编码 / 名称 / 序号等任意字段检索</span></div>
+  <div class="pub-tabs" id="pubTabs"></div>
+  <div class="lib-toolbar">
+    <input type="text" id="pubQ" placeholder="按任意字段搜索（编码 / 名称 / 拼音 / 首字母…）" oninput="debPub()" onkeydown="if(event.key==='Enter')pubLoad(1)">
+    <button class="primary" onclick="pubLoad(1)">查 询</button>
+  </div>
+  <div class="seq-hint hidden" id="pubSeqHint"></div>
+  <div class="tbl-wrap">
+    <table id="pubTable">
+      <thead id="pubHead"></thead>
+      <tbody id="pubBody" oncontextmenu="pubCtx(event)"></tbody>
+    </table>
+  </div>
+  <div class="pager-bar" id="pubPager"></div>
+</div>
+
+<!-- ============ 立项指南查询 ============ -->
+<div id="panelLx" class="panel hidden">
+  <div class="page-title">
+    <h2>立项指南查询</h2>
+    <div class="view-toggle">
+      <button id="lxvItems" class="on" onclick="lxView('items')">价格项目</button>
+      <button id="lxvJiedu" onclick="lxView('jiedu')">解读辅导<b id="jdBadge"></b></button>
+    </div>
+  </div>
+
+  <div id="lxItemsView">
+    <div class="lib-toolbar">
+      <select id="lxTabSel" onchange="lxSwitch(this.value)"></select>
+      <select id="lxCatSel" onchange="lxLoad(1)"></select>
+      <select id="lxFlagSel" onchange="lxLoad(1)">
+        <option value="">全部项目</option>
+        <option value="add">仅有加收项</option>
+        <option value="ext">仅有扩展项</option>
+      </select>
+      <input type="text" id="lxQ" placeholder="按任意字段搜索（项目名称 / 拼音 / 首字母 / 加收项…）" oninput="debLx()" onkeydown="if(event.key==='Enter')lxLoad(1)">
+      <button class="primary" onclick="lxLoad(1)">查 询</button>
+    </div>
+    <div class="jd-item" id="lxUsageBox" onclick="this.classList.toggle('open')" style="margin-bottom:12px">
+      <div class="jd-q"><span class="tag">使用说明</span>本类使用说明（点击展开）<span class="arrow">▶</span></div>
+      <div class="jd-a" id="lxUsageText"></div>
+    </div>
+    <div class="tbl-wrap">
+      <table id="lxTable">
+        <thead id="lxHead"></thead>
+        <tbody id="lxBody"></tbody>
+      </table>
+    </div>
+    <div class="pager-bar" id="lxPager"></div>
+  </div>
+
+  <div id="lxJieduView" class="hidden">
+    <div class="lib-toolbar">
+      <select id="jdIssue" onchange="jdLoad()"></select>
+      <div class="ac-wrap" style="flex:1">
+        <input type="text" id="jdQ" placeholder="搜索解读问题 / 答案内容（支持拼音 / 首字母），输入时联想问题标题…" autocomplete="off"
+               oninput="debJdAc(); debJd();" onkeydown="if(event.key==='Enter')jdLoad()" onfocus="jdSuggest()">
+        <div class="ac-list" id="jdAcList"></div>
+      </div>
+      <button class="primary" onclick="jdLoad()">查 询</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="jdTable">
+        <thead id="jdHead"></thead>
+        <tbody id="jdBody"></tbody>
+      </table>
+    </div>
+    <div class="pager" style="display:flex;gap:12px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--muted)">
+      <span id="jdPageInfo"></span>
+    </div>
+  </div>
+</div>
+<!-- ============ 德州物价（与桌面端四个视图同构） ============ -->
+<div id="panelDz" class="panel hidden">
+  <div class="page-title">
+    <h2>德州物价</h2>
+    <div class="view-toggle">
+      <button id="dzvLive" class="on" onclick="dzView('live')">现行项目</button>
+      <button id="dzvCancel" onclick="dzView('cancel')">作废对照</button>
+      <button id="dzvLegacy" onclick="dzView('legacy')">旧版物价</button>
+      <button id="dzvCmp" onclick="dzView('cmp')">新旧比对</button>
+    </div>
+  </div>
+  <div class="lib-toolbar">
+    <select id="dzDoc" onchange="dzLoad(1)"></select>
+    <select id="dzCat" onchange="dzLoad(1)"></select>
+    <!-- 筛选项与桌面端 DezhouPriceView 一一对应（顺序也照抄：批次 / 类别 / 性质 / 级别 / 医保 / 比对范围 / 比对口径） -->
+    <select id="dzKind" onchange="dzLoad(1)">
+      <option value="">全部性质</option>
+      <option value="main">主项目</option>
+      <option value="add">加收项</option>
+      <option value="ext">扩展项</option>
+    </select>
+    <select id="dzLevel" onchange="dzLoad(1)">
+      <option value="">全部级别价</option>
+      <option value="3">三级价</option>
+      <option value="2">二级价</option>
+      <option value="1">一级价</option>
+    </select>
+    <select id="dzIns" onchange="dzLoad(1)">
+      <option value="">医保不限</option>
+      <option value="是">医保支付</option>
+      <option value="否">自费</option>
+    </select>
+    <select id="dzScope" class="hidden" onchange="dzLoad(1)">
+      <option value="">全部</option>
+      <option value="priced">有旧价可比</option>
+      <option value="cancel">仅作废对照</option>
+      <option value="none">纯新增</option>
+    </select>
+    <!-- 比对口径：只换差额 / 涨幅的显示档位，不重新取数（同桌面端 CmpLevelSel） -->
+    <select id="dzCmpLevel" class="hidden" onchange="dzCmpLevelChange()">
+      <option value="3">口径：三级医院</option>
+      <option value="2">口径：二级医院</option>
+      <option value="1">口径：一级医院</option>
+    </select>
+    <input type="text" id="dzQ" placeholder="编码 / 名称 / 类别 / 服务产出 / 计价说明"
+           onkeydown="if(event.key==='Enter')dzLoad(1)">
+    <button class="primary" onclick="dzLoad(1)">查 询</button>
+    <button class="ghost" onclick="dzClear()">清 空</button>
+  </div>
+  <!-- 操作行：左侧统计，右侧「仅看收藏 + 导出范围 + 导出」固定成组（同桌面端两行布局，
+       13 个控件挤一行会把关键词框压成一条缝） -->
+  <div class="act-row">
+    <div class="stat-line" id="dzStat"></div>
+    <div class="act-right">
+      <label class="cbx-lbl hidden" id="dzFavWrap">
+        <input type="checkbox" id="dzFavOnly" onchange="dzLoad(1)"><span id="dzFavTxt">仅看收藏</span>
+      </label>
+      <select id="dzExpRange" class="hidden"></select>
+      <button class="ghost hidden" id="dzExpBtn" onclick="dzExport()">导 出</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table id="dzTable">
+      <thead id="dzHead"></thead>
+      <tbody id="dzBody"></tbody>
+    </table>
+  </div>
+  <div class="pager-bar" id="dzPager"></div>
+</div>
+
+<!-- ============ 项目技术规范 ============ -->
+<div id="panelGf" class="panel hidden">
+  <div class="page-title"><h2>项目技术规范</h2><span class="desc">全国医疗服务项目技术规范（2162 页正文解析）：按章节 / 类别 / 计价单位检索</span></div>
+  <div class="lib-toolbar">
+    <select id="gfCat" onchange="gfLoad(1)"></select>
+    <select id="gfChap" onchange="gfLoad(1)"></select>
+    <select id="gfUnit" onchange="gfLoad(1)"></select>
+    <!-- 耗材筛选与桌面端 MatSel 同档位：不限 / 含必需耗材 / 无必需耗材（原来只有「仅有耗材」一个勾，
+         没法反过来只看不含耗材的项目） -->
+    <select id="gfMat" onchange="gfLoad(1)">
+      <option value="">耗材不限</option>
+      <option value="req">含必需耗材</option>
+      <option value="none">无必需耗材</option>
+    </select>
+    <input type="text" id="gfQ" placeholder="按项目名称 / 编码 / 内涵检索…" onkeydown="if(event.key==='Enter')gfLoad(1)">
+    <button class="primary" onclick="gfLoad(1)">查 询</button>
+  </div>
+  <div class="stat-line" id="gfStat" style="margin-bottom:8px"></div>
+  <div class="tbl-wrap">
+    <table id="gfTable">
+      <thead id="gfHead"></thead>
+      <tbody id="gfBody"></tbody>
+    </table>
+  </div>
+  <div class="pager-bar" id="gfPager"></div>
+</div>
+</div><!-- /wrap -->
+
+<script>
+// ==========================================================================
+// 界面主题：五套配色，与桌面端 Theming/ThemeCatalog 同一份色值（id 也一致）
+// 只换 CSS 变量，不动布局；选择存 localStorage，按浏览器/本机记，不影响别人。
+// ==========================================================================
+const TH_THEMES = [
+  { id: 'azure',    name: '经典蓝',       hint: '稳重专业 · 默认', sw: ['#eef2f8', '#ffffff', '#1d6fe0'] },
+  { id: 'jade',     name: '青碧',         hint: '医疗清新',        sw: ['#edf5f3', '#ffffff', '#0f8a7e'] },
+  { id: 'indigo',   name: '靛紫',         hint: '现代科技',        sw: ['#eff0fa', '#ffffff', '#4f46e5'] },
+  { id: 'crimson',  name: '朱砂',         hint: '温润中医',        sw: ['#f8f2ee', '#fffdfc', '#b4322a'] },
+  { id: 'graphite', name: '石墨（深色）', hint: '夜间护眼',        sw: ['#16191f', '#1f232b', '#4c8dff'] },
+];
+const TH_KEY = 'dip3.theme';
+
+function thCur() {
+  const v = document.documentElement.dataset.theme;
+  return TH_THEMES.some(t => t.id === v) ? v : 'azure';
+}
+
+function thRender() {
+  const cur = thCur();
+  document.getElementById('thList').innerHTML = TH_THEMES.map(t => `
+    <div class="th-card${t.id === cur ? ' on' : ''}" onclick="thApply('${t.id}')" title="${t.name}">
+      <span class="th-tick">✓</span>
+      <div class="th-sw">
+        <i style="background:${t.sw[0]}"></i><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i>
+      </div>
+      <div class="nm">${t.name}</div><div class="ht">${t.hint}</div>
+    </div>`).join('');
+  const t = TH_THEMES.find(x => x.id === cur);
+  document.getElementById('thCur').textContent = '当前：' + t.name + (t.id === 'azure' ? '（默认）' : '');
+}
+
+function thApply(id) {
+  if (!TH_THEMES.some(t => t.id === id)) id = 'azure';
+  document.documentElement.dataset.theme = id;
+  try { localStorage.setItem(TH_KEY, id); } catch (e) { /* 隐私模式禁写：本次会话仍然生效 */ }
+  thRender();
+}
+
+function thToggle(e) {
+  if (e) e.stopPropagation();
+  const p = document.getElementById('thPanel');
+  const on = !p.classList.contains('on');
+  p.classList.toggle('on', on);
+  document.getElementById('themeBtn').classList.toggle('on', on);
+}
+
+function thReset() { thApply('azure'); }
+
+document.addEventListener('click', e => {
+  const p = document.getElementById('thPanel');
+  if (!p.classList.contains('on')) return;
+  if (p.contains(e.target) || e.target.closest('#themeBtn')) return;
+  p.classList.remove('on');
+  document.getElementById('themeBtn').classList.remove('on');
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.getElementById('thPanel').classList.remove('on');
+  document.getElementById('themeBtn').classList.remove('on');
+});
+
+thRender();
+
+let lastToken = null;
+
+// ==========================================================================
+// 通用分页条：上一页 / 下一页 / 跳页 / 每页条数 / 「第 N/M 页 · 共 X 条」
+// 桌面端四个表都长这样（DezhouPriceView / DiseaseLibView / LixiangView / AdminAuditView），
+// 网页端之前只有「上一页」「下一页」，翻到第 30 页只能一直点。这里做成一份，谁用谁注册。
+// ==========================================================================
+const PAGERS = {};
+// 每页条数上限跟桌面端一致（50 / 100 / 200）：Core 的 ListRows 内部把 pageSize 夹在 200 以内，
+// 网页端若给 500，接口只会回 200 行而页码按 500 算 —— 第 2 页从第 501 条起，300 条凭空消失。
+const PAGE_SIZES = [50, 100, 200];
+
+function pgSet(key, elId, st, go) {
+  PAGERS[key] = { el: elId, st, go };
+  pgPaint(key);
+}
+
+function pgPaint(key) {
+  const p = PAGERS[key];
+  if (!p) return;
+  const el = document.getElementById(p.el);
+  if (!el) return;
+  const page = Math.max(1, p.st.page || 1);
+  const size = Math.max(5, p.st.pageSize || 50);
+  const total = Math.max(0, p.st.total || 0);
+  const pages = Math.max(1, Math.ceil(total / size));
+  el.innerHTML =
+    `<button class="ghost" onclick="pgGo('${key}',-1)"${page <= 1 ? ' disabled' : ''}>上一页</button>` +
+    `<span>第 <b class="cur">${page}</b> / ${pages} 页 · 共 ${total.toLocaleString()} 条</span>` +
+    `<button class="ghost" onclick="pgGo('${key}',1)"${page >= pages ? ' disabled' : ''}>下一页</button>` +
+    `<span class="grow"></span>` +
+    `<span>跳至</span><input value="${page}" onkeydown="pgJumpKey(event,'${key}')"><span>页</span>` +
+    `<span>每页</span><select onchange="pgSize('${key}',this.value)">` +
+    PAGE_SIZES.map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} 条</option>`).join('') +
+    `</select>`;
+}
+
+function pgPages(key) {
+  const p = PAGERS[key];
+  return Math.max(1, Math.ceil((p.st.total || 0) / Math.max(5, p.st.pageSize || 50)));
+}
+
+function pgGo(key, d) {
+  const p = PAGERS[key];
+  if (!p) return;
+  const np = Math.min(pgPages(key), Math.max(1, (p.st.page || 1) + d));
+  if (np !== p.st.page) p.go(np);
+}
+
+function pgJumpKey(e, key) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();                       // 不拦会触发默认行为（表单/首个按钮）
+  const p = PAGERS[key];
+  if (!p) return;
+  const v = parseInt(e.target.value, 10);
+  const np = Number.isFinite(v) ? Math.min(pgPages(key), Math.max(1, v)) : (p.st.page || 1);
+  if (np !== p.st.page) p.go(np);
+  else e.target.value = p.st.page || 1;     // 非法输入还原当前页，不弹错
+}
+
+function pgSize(key, v) {
+  const p = PAGERS[key];
+  if (!p) return;
+  p.st.pageSize = parseInt(v, 10) || 50;
+  p.go(1);
+}
+
+// ==========================================================================
+// 表格密度：紧凑 26 / 标准 34（与桌面端 UiPrefs 同档位、默认紧凑、只记本机）
+// ==========================================================================
+const DEN_KEY = 'dip3.density';
+function denApply(v) {
+  const val = v === 'normal' ? 'normal' : 'compact';
+  document.documentElement.dataset.density = val;
+  try { localStorage.setItem(DEN_KEY, val); } catch (e) { /* 隐私模式禁写：本次会话仍生效 */ }
+  const t = document.getElementById('densityTxt');
+  if (t) t.textContent = val === 'normal' ? '标准' : '紧凑';
+}
+function denToggle() {
+  denApply(document.documentElement.dataset.density === 'normal' ? 'compact' : 'normal');
+}
+try { denApply(localStorage.getItem(DEN_KEY) || 'compact'); } catch (e) { denApply('compact'); }
+
+/** 空值统一成「—」：源表里 \ / - / 空白都表示「没有」，同一列混着三种写法会让人以为数据缺了 */
+function dash(v) {
+  const s = v == null ? '' : String(v).trim();
+  return s === '' || s === '\\' || s === '-' || s === '—' ? '—' : s;
+}
+
+/** 列宽必须挂在 <table> 下的 <colgroup> 上：塞进 <thead> 里会被 HTML 解析器丢掉（表头照旧，列宽全失效） */
+function setColWidths(tableId, html) {
+  const t = document.getElementById(tableId);
+  if (!t) return;
+  let cg = t.querySelector('colgroup');
+  if (!cg) { cg = document.createElement('colgroup'); t.insertBefore(cg, t.firstChild); }
+  cg.innerHTML = html;
+
+  // 表宽 100% 铺满容器、min-width 兜住「固定列宽之和」：
+  //   · 容器比列宽之和宽 → 列按比例放大，右侧不再留一块空白（钉死表宽的旧做法就是这样留白的）；
+  //   · 容器比列宽之和窄 → 触发 .tbl-wrap 横向滚动，列不会被压成一条缝。
+  // 没写 width 的列（如立项指南的「使用说明」）由浏览器分走剩余空间，长文本列才吃得饱。
+  const colCount = (html.match(/<col\b/g) || []).length;
+  const widths = [];
+  const re = /width:\s*(\d+(?:\.\d+)?)px/g;
+  let m;
+  while ((m = re.exec(html)) !== null) widths.push(parseFloat(m[1]));
+  const fixed = widths.reduce((a, b) => a + b, 0);
+  const flexCount = Math.max(0, colCount - widths.length);
+  t.style.width = '100%';
+  // 自适应列至少按 280px 计进 min-width，否则窄屏下它们会被挤成一条缝
+  t.style.minWidth = fixed > 0 ? (fixed + flexCount * 280) + 'px' : '';
+}
+
+/** 详情卡里的一对「标签 + 值」。值超过 40 字或含换行时占满整行 —— 否则右半边会留一大片空 */
+function dcell(k, h) {
+  const txt = String(h).replace(/<[^>]+>/g, '');
+  const wide = txt.length > 40 || txt.includes('\n');
+  return `<div class="dl">${esc(k)}</div><div class="dv${wide ? ' wide' : ''}">${h}</div>`;
+}
+
+/**
+ * 详情字段区：一个字段一行，空值整行不显示。
+ * 桌面端 Add() 里空值直接 return，网页版原来一律打「—」——
+ * 一条器官移植项目 14 行里 8 行是空杠，卡片比桌面端高两倍却什么也没多说。
+ * 这里先过 dash()（比较表缺价是「\」「-」这类占位符），再滤掉空值。
+ */
+function dGrid(rows, extra) {
+  const cells = (rows || [])
+    .map(([k, v]) => [k, dash(v)])
+    .filter(([, v]) => v && v !== '—')
+    .map(([k, v]) => dcell(k, esc(v)));
+  return '<div class="dgrid">' + cells.join('') + (extra || '') + '</div>';
+}
+
+/**
+ * 详情卡末尾的「互相关联」：与桌面端 CrossMap（现为 Core 的 CrossLinker）同源，
+ * 返回 [{label, hits:[{chip,text,lib,id}]}]。同名直连优先，其次相似（Dice≥0.62，top3）。
+ * 取不到就不显示这一块，不留空标题。
+ */
+function dxGroupHtml(g) {
+  const lines = (g.hits || []).map((h) => {
+    const txt = String(h.text || '');
+    const kw = txt.split('　')[0];              // 摘要前的名称，拿去目标库检索
+    return `<div class="ditem"><span class="chip">${esc(h.chip)}</span>` +
+      `<a class="dxlink" data-lib="${esc(h.lib || '')}" data-kw="${esc(kw)}"` +
+      ` onclick="crossJump(this)" title="在${esc(libName(h.lib))}中检索「${esc(kw)}」">${esc(txt)}</a></div>`;
+  }).join('');
+  return `<div class="dl">${esc(g.label)}</div><div class="dv">${lines}</div>`;
+}
+
+function libName(lib) {
+  return lib === 'lixiang' ? '立项指南' : lib === 'guifan' ? '技术规范' : lib === 'dezhou' ? '德州物价' : lib;
+}
+
+function dxFill(box, lib, name) {
+  if (!box || !name) return;
+  fetch(`/api/cross?lib=${encodeURIComponent(lib)}&name=${encodeURIComponent(name)}`)
+    .then((r) => r.json())
+    .then((r) => {
+      const groups = (r && r.groups) || [];
+      if (!groups.length) { box.remove(); return; }
+      box.innerHTML = '<div class="dgrid">' + groups.map(dxGroupHtml).join('') + '</div>';
+    })
+    .catch(() => box.remove());
+}
+
+/** 点关联条目：切到目标库、把名称填进搜索框、查一次（桌面端是弹详情窗，网页端等价的落点就是检索） */
+function crossJump(el) {
+  const lib = el.getAttribute('data-lib');
+  const kw = el.getAttribute('data-kw');
+  if (!kw) return;
+  const cfg = lib === 'lixiang' ? ['lx', 'lxQ', () => lxLoad(1)]
+    : lib === 'guifan' ? ['gf', 'gfQ', () => gfLoad(1)]
+      : lib === 'dezhou' ? ['dz', 'dzQ', () => dzLoad(1)] : null;
+  if (!cfg) return;
+  switchTab(cfg[0]);
+  const box = document.getElementById(cfg[1]);
+  if (box) box.value = kw;
+  cfg[2]();
+}
+
+/** 详情卡右上角「收起」：与桌面端 Btn.Link 同一个位置、同一句文案 */
+function closeDetail(btn) {
+  const tr = btn.closest('tr.dz-detail') || btn.closest('tr.lx-detail');
+  if (!tr) return;
+  const prev = tr.previousElementSibling;
+  tr.remove();
+  if (prev) prev.classList.remove('open');
+  if (tr.classList.contains('lx-detail')) { lxState.openKey = null; jdOpenKey = null; }
+}
+
+/** 技术规范的三个量表（技术难度 / 风险程度 / 资源消耗），尺寸配色同桌面端 Meter.Bar */
+function gfMetersHtml(row) {
+  const defs = [
+    ['技术难度', row.difficulty, '#1e88e5'],
+    ['风险程度', row.risk, '#f59e0c'],
+    ['资源消耗', row.hrValue, '#2ea44f'],
+  ];
+  const items = defs.filter(([, v]) => v != null && String(v).trim() !== '' && !isNaN(parseFloat(v)));
+  if (!items.length) return '';
+  return '<div class="dmeters">' + items.map(([label, v, color]) => {
+    const n = Math.max(0, Math.min(100, parseFloat(v)));
+    return `<div class="dmeter"><span class="dmlabel">${esc(label)}</span>` +
+      `<div><div class="dmhead"><b class="dmval">${n.toFixed(2)}</b></div>` +
+      `<div class="dmbar"><i style="width:${n}%;background:${color}"></i></div></div></div>`;
+  }).join('') + '</div>';
+}
+
+// ---------- 输入防抖 ----------
+function debFn(fn, wait = 250) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
+const debPub = debFn(() => pubLoad(1));
+const debLx = debFn(() => lxLoad(1));
+const debJd = debFn(() => jdLoad());
+const debJdAc = debFn(() => jdSuggest(), 200);
+
+function switchTab(tab) {
+  document.getElementById('tabSingle').classList.toggle('active', tab === 'single');
+  document.getElementById('tabBatch').classList.toggle('active', tab === 'batch');
+  document.getElementById('tabLib').classList.toggle('active', tab === 'lib');
+  document.getElementById('tabLx').classList.toggle('active', tab === 'lx');
+  document.getElementById('tabDz').classList.toggle('active', tab === 'dz');
+  document.getElementById('tabGf').classList.toggle('active', tab === 'gf');
+  document.getElementById('panelSingle').classList.toggle('hidden', tab !== 'single');
+  document.getElementById('panelBatch').classList.toggle('hidden', tab !== 'batch');
+  document.getElementById('panelLib').classList.toggle('hidden', tab !== 'lib');
+  document.getElementById('panelLx').classList.toggle('hidden', tab !== 'lx');
+  document.getElementById('panelDz').classList.toggle('hidden', tab !== 'dz');
+  document.getElementById('panelGf').classList.toggle('hidden', tab !== 'gf');
+  if (tab === 'lib') pubInit();
+  if (tab === 'lx') lxInit();
+  if (tab === 'dz') dzInit();
+  if (tab === 'gf') gfInit();
+}
+
+// ============ 病种库查询（只读） ============
+// 接口用 /api/diseases（前台只读），不再借 /api/admin/diseases —— 后台一开登录，
+// 借管理接口读数据的前台就会 401。
+const pubState = { tab: 'bingxiang', page: 1, pageSize: 50, ready: false, rows: [], cols: [], starts: {}, totals: {} };
+
+async function pubInit() {
+  if (pubState.ready) return;
+  pubState.ready = true;
+  try {
+    const r = await fetch('/api/diseases-counts').then((x) => x.json());
+    const tabs = r.tabs || [];
+    pubState.starts = {};
+    pubState.totals = {};
+    tabs.forEach((s) => { pubState.starts[s.tab] = s.start; pubState.totals[s.tab] = s.total; });
+    document.getElementById('pubTabs').innerHTML = tabs.map((s) =>
+      `<a class="${s.tab === pubState.tab ? 'on' : ''}" onclick="pubSwitch('${s.tab}')">${esc(s.label)}<b>${(s.total || 0).toLocaleString()}</b></a>`).join('');
+  } catch { /* 忽略 */ }
+  pubLoad(1);
+}
+
+function pubSwitch(tab) {
+  pubState.tab = tab;
+  document.querySelectorAll('#pubTabs a').forEach((a) => a.classList.remove('on'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('on');
+  pubLoad(1);
+}
+
+async function pubLoad(page) {
+  pubState.page = page || 1;
+  const q = document.getElementById('pubQ').value.trim();
+  try {
+    const r = await fetch(`/api/diseases?tab=${pubState.tab}&page=${pubState.page}&pageSize=${pubState.pageSize}&q=${encodeURIComponent(q)}`).then((x) => x.json());
+    // 序号承接：区段各自从 1 编号，切到第二段看到「序号 1」会以为排序坏了（同桌面端 SeqHint）
+    const st = pubState.starts[pubState.tab];
+    const hint = document.getElementById('pubSeqHint');
+    if (st && st > 1) {
+      hint.classList.remove('hidden');
+      hint.innerHTML = `ⓘ 序号承接前序区段（1–${st - 1}），本区段从 <b>${st}</b> 起`;
+    } else hint.classList.add('hidden');
+
+    if (r.error) { pubState.rows = []; pubState.cols = []; document.getElementById('pubBody').innerHTML = `<tr><td colspan="9" style="color:var(--danger)">${esc(r.error)}</td></tr>`; return; }
+    // 行数据留在内存里供右键菜单取用（只复制屏幕上真正看到的那一页）
+    pubState.rows = r.rows || [];
+    pubState.cols = r.columns || [];
+    document.getElementById('pubHead').innerHTML =
+      '<tr>' + r.columns.map((c) => `<th title="${esc(c.label)}">${esc(c.label)}</th>`).join('') + '</tr>';
+    // 列宽：数据列按 API 给的宽度，名称/手术/说明这类长文本列一律 232 ——
+    // 病种库的列定义里名称列是「自适应」（width 0），照搬到网页端会被压成一条缝；
+    // 232 是量出来的：序号 64 + 6×232 = 1456，正好等于 1560 容器减去两侧留白，不出滚动条。
+    setColWidths('pubTable', r.columns.map((c) => {
+      const long = /名称|手术|诊断|备注|说明|内涵/.test(c.label);
+      const w = long ? 232 : Math.max(64, Math.min(c.width || 100, 200));
+      return `<col style="width:${w}px">`;
+    }).join(''));
+    document.getElementById('pubBody').innerHTML = r.rows.length
+      ? r.rows.map((row, ri) => `<tr data-i="${ri}">` + r.columns.map((c) => {
+          const v = row[c.key] ?? '';
+          const s = Array.isArray(v) ? v.join(' | ') : String(v);
+          const isCode = /code|编码|序号|seq/i.test(c.key + c.label);
+          return `<td class="${isCode ? 'mono-col' : ''}" title="${esc(s)}">${esc(dash(s))}</td>`;
+        }).join('') + '</tr>').join('')
+      : `<tr><td colspan="${r.columns.length}" style="text-align:center;color:var(--muted);padding:24px 0">无匹配记录</td></tr>`;
+    pgSet('pub', 'pubPager', { page: r.page, pageSize: r.pageSize, total: r.total }, pubLoad);
+  } catch (e) {
+    document.getElementById('pubBody').innerHTML = `<tr><td colspan="9" style="color:var(--danger)">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function pubMove(d) { pubLoad(Math.max(1, pubState.page + d)); }
+
+// ============ 病种库右键菜单（复制单元格 / 本行 / 单字段 / 按值检索） ============
+// 与桌面端 RowMenu 对齐：列名与顺序都按当前区段的列定义走，不写死字段
+const ctxState = { items: [] };
+
+function pubCellOf(v) {
+  if (v == null) return '';
+  return Array.isArray(v) ? v.join(' | ') : String(v);
+}
+
+function pubCtx(e) {
+  const tr = e.target.closest && e.target.closest('#pubBody tr');
+  if (!tr) return;
+  const idx = Number(tr.getAttribute('data-i'));
+  const row = (pubState.rows || [])[idx];
+  const cols = pubState.cols || [];
+  if (!row || !cols.length) return;
+  e.preventDefault();
+
+  const td = e.target.closest('td');
+  const colIdx = td ? Array.from(tr.children).indexOf(td) : -1;
+  const col = cols[colIdx] || null;
+  const val = (k) => pubCellOf(row[k]);
+  const items = [];
+
+  if (col) {
+    const v = val(col.key);
+    if (v) items.push({ t: '复制该单元格内容', fn: () => copyText(v, '已复制单元格') });
+  }
+  items.push({ t: '复制本行（可直接粘进 Excel）', fn: () => copyText(cols.map((c) => val(c.key)).join('\t'), '已复制本行') });
+  items.push({
+    t: '复制本行（带列名）',
+    fn: () => copyText(cols.map((c) => c.label).join('\t') + '\n' + cols.map((c) => val(c.key)).join('\t'), '已复制本行（含列名）'),
+  });
+
+  // 编码 / 名称 / 序号类字段单独一项：核对病种时被拿去比对的就是这几个
+  const picked = cols.filter((c) => /code|编码|序号|seq|name|名称|诊断|手术/i.test(c.key + c.label)).slice(0, 4);
+  const pickedItems = picked.filter((c) => val(c.key))
+    .map((c) => ({ t: '复制 · ' + c.label, fn: () => copyText(val(c.key), '已复制 ' + c.label) }));
+  if (pickedItems.length) { items.push({ sep: true }); items.push(...pickedItems); }
+
+  if (col) {
+    const v = val(col.key);
+    if (v) {
+      items.push({ sep: true });
+      items.push({
+        t: '按该单元格内容检索',
+        fn: () => { document.getElementById('pubQ').value = v; pubLoad(1); },
+      });
+    }
+  }
+
+  showCtx(e.clientX, e.clientY, items);
+}
+
+function showCtx(x, y, items) {
+  const m = document.getElementById('ctxMenu');
+  ctxState.items = items;
+  m.innerHTML = items.map((it, i) => it.sep ? '<div class="sep"></div>' : `<div class="it" data-i="${i}">${esc(it.t)}</div>`).join('');
+  m.classList.remove('hidden');
+  // 贴边时朝内翻转（直接定位到视口外的菜单用户会以为没弹出来）
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.max(6, Math.min(x, window.innerWidth - w - 8)) + 'px';
+  m.style.top = Math.max(6, Math.min(y, window.innerHeight - h - 8)) + 'px';
+  m.onclick = (ev) => {
+    const d = ev.target.closest('.it');
+    if (!d) return;
+    const it = items[Number(d.getAttribute('data-i'))];
+    closeCtx();
+    if (it && it.fn) it.fn();
+  };
+}
+
+function closeCtx() {
+  document.getElementById('ctxMenu').classList.add('hidden');
+  ctxState.items = [];
+}
+
+function copyText(text, hint) {
+  const done = () => toast(hint || '已复制');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch { toast('复制失败'); }
+  document.body.removeChild(ta);
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 1300);
+}
+
+document.addEventListener('click', (e) => { if (!e.target.closest('#ctxMenu')) closeCtx(); });
+document.addEventListener('scroll', closeCtx, true);
+
+// ==========================================================================
+// 基本物耗指引（桌面端 WuhaoPanel 的网页版，同一份 data/wuhao.json）
+// —— 判定走后端 WuhaoStore.Judge，前端只渲染、不自己写一套判断规则，
+//    免得「网页说能收、桌面说不能收」。
+// ==========================================================================
+const zwState = { data: null, tab: 'judge', group: '', q: '', pick: '' };
+let zwTimer = 0;
+
+function zwEl(id) { return document.getElementById(id); }
+function zwEsc(s) {
+  return (s == null ? '' : String(s)).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function zwVerdictClass(v) { return v === '可另收' ? 'yes' : v === '可另收（减收）' ? 'ded' : v === '不可另收' ? 'no' : v === '需核对' ? 'chk' : ''; }
+
+function zwTab(t) {
+  zwState.tab = t;
+  document.querySelectorAll('#zgWuhao .zgw-tab').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+  const map = { judge: 'zwJudge', basic: 'zwBasic', charge: 'zwCharge', rule: 'zwRule' };
+  Object.values(map).forEach((id) => zwEl(id).classList.add('hidden'));
+  zwEl(map[t]).classList.remove('hidden');
+  if (t === 'basic') zwRenderItems();
+}
+
+async function zwBoot() {
+  if (!zwState.data) {
+    try {
+      const d = await fetch('/api/wuhao').then((r) => r.json());
+      if (d && !d.error) { zwState.data = d; zwPaint(); }
+    } catch { /* 取不到就留空态，不阻塞抽屉其它工具 */ }
+  }
+  if (!zwState.q) zwAsk('');
+}
+
+function zwPaint() {
+  const d = zwState.data;
+  zwEl('zwCntBasic').textContent = d.total;
+  zwEl('zwCntCharge').textContent = (d.edges || []).length;
+  zwEl('zwSub').textContent = `${d.meta.cats} 类指南条款 · ${d.total} 条基本物耗 · ${(d.edges || []).length} 条边界判断`;
+
+  // 分组条数按当前 items 实时算，别指望 JSON 里带 count（早先这里显示空白）
+  const groups = [{ id: '', name: '全部', count: d.total }].concat((d.groups || []).map((g) => ({
+    id: g.id, name: g.name,
+    count: (d.items || []).filter((i) => i.group === g.id).length,
+  })));
+  zwEl('zwGroups').innerHTML = groups.map((g) =>
+    `<div class="zgw-gi${g.id === '' ? ' on' : ''}" data-g="${zwEsc(g.id)}" onclick="zwPickGroup(this)">` +
+    `<span>${zwEsc(g.name)}</span><span class="n">${g.count}</span></div>`).join('');
+
+  zwEl('zwRules').innerHTML = (d.rules || []).map((r) =>
+    `<div class="zgw-rule"><div class="t"><i>${zwEsc(r.no)}</i>${zwEsc(r.title)}</div><p>${zwEsc(r.text)}</p></div>`).join('');
+
+  zwEl('zwSrcSec').textContent = `指南条款原文（${(d.sources || []).length} 类）`;
+  zwEl('zwSources').innerHTML = (d.sources || []).map((x) =>
+    `<div class="zgw-src"><div class="t">${zwEsc(x.cat)}</div><p>${zwEsc(x.clause)}</p></div>`).join('');
+
+  zwRenderEdges();
+  zwRenderItems();
+}
+
+function zwPickGroup(el) {
+  zwState.group = el.dataset.g || '';
+  document.querySelectorAll('#zwGroups .zgw-gi').forEach((x) => x.classList.toggle('on', x === el));
+  zwRenderItems();
+}
+
+function zwItemsNow() {
+  const d = zwState.data;
+  if (!d) return [];
+  const kw = (zwEl('zwBQ').value || '').trim().toLowerCase();
+  return (d.items || []).filter((i) => {
+    if (zwState.group && i.group !== zwState.group) return false;
+    if (!kw) return true;
+    const hay = [i.name, (i.alias || []).join(' '), i.note, (i.cats || []).join(' ')].join(' ').toLowerCase();
+    return hay.indexOf(kw) >= 0;
+  });
+}
+
+// 边界清单里能对上这个词的条目（与 Core 的 WuhaoStore.EdgeHit 同一口径）
+function zwEdgeHit(q) {
+  const d = zwState.data;
+  const kw = (q || '').trim().replace(/\s+/g, '');
+  if (!d || kw.length < 2) return [];
+  return (d.edges || []).filter((e) => {
+    const nm = (e.name || '').replace(/\s+/g, '');
+    if (nm.indexOf(kw) >= 0 || kw.indexOf(nm) >= 0) return true;
+    return nm.split(/[/、]/).some((p) => p.length >= 2 && (p.indexOf(kw) >= 0 || kw.indexOf(p) >= 0));
+  });
+}
+
+function zwRenderItems() {
+  if (!zwState.data) return;
+  const rows = zwItemsNow();
+  zwEl('zwBStat').textContent = `${rows.length} 条 · 双击判定`;
+  let empty = '没有匹配的条目，换个词试试：纱布 / 棉签 / 试剂 / 引流';
+  if (rows.length === 0) {
+    // 清单里没有 ≠ 工具不认识：留置针、避光输液器这类在边界清单里，直接把结论抬出来
+    const kw = (zwEl('zwBQ').value || '').trim();
+    const edges = zwEdgeHit(kw);
+    if (edges.length) {
+      empty = `基本物耗清单里没有，边界清单有 ${edges.length} 条：<br>` +
+        edges.slice(0, 3).map((e) =>
+          `· ${zwEsc(e.name)} → <b>${zwEsc(e.verdict)}</b>：${zwEsc(e.basis)}`).join('<br>');
+    }
+  }
+  zwEl('zwItems').innerHTML = rows.length === 0
+    ? `<div class="zg-empty">${empty}</div>`
+    : rows.map((i) =>
+      `<div class="zgw-tr" data-id="${zwEsc(i.id)}" onclick="zwPickItem(this)" ondblclick="zwJudgeItem(this)">` +
+      `<span class="nm" title="${zwEsc(i.name)}">${zwEsc(i.name)}</span>` +
+      `<span class="cv">${i.count}/36 类</span>` +
+      `<span class="nt">${zwEsc(i.note)}</span></div>`).join('');
+  // 与桌面端一致：筛完自动落在第一条，底部依据框不会是空的
+  const first = zwEl('zwItems').querySelector('.zgw-tr');
+  if (first) zwPickItem(first);
+  else {
+    // 0 条时把底部详情清掉，否则会留着上一次选中的条目，看着像「搜到了别的」
+    zwEl('zwPickName').textContent = '没有匹配的基本物耗条目';
+    zwEl('zwPickBasis').textContent = '上方提示里若有边界清单结论，以那一条为准；没收录的按「过三关」核对。';
+  }
+}
+
+function zwPickItem(el) {
+  const d = zwState.data;
+  const it = (d.items || []).find((x) => x.id === el.dataset.id);
+  if (!it) return;
+  zwEl('zwItems').querySelectorAll('.zgw-tr').forEach((x) => x.classList.toggle('on', x === el));
+  zwEl('zwPickName').textContent = `${it.name} · ${it.groupName} · ${it.count}/36 类`;
+  // 详情区把条款原文也带出来（原来只有第一条，还要去「口径依据」翻）
+  const srcs = (d.sources || []).filter((x) => (it.cats || []).indexOf(x.cat) >= 0);
+  const cut = (t) => (t && t.length > 160 ? t.slice(0, 160) + '…' : t || '');
+  zwEl('zwPickBasis').innerHTML = `${zwEsc(it.note)}<br>出现在 ${it.count}/36 类：${zwEsc((it.cats || []).join('、'))}` +
+    srcs.slice(0, 2).map((x) => `<br>【${zwEsc(x.cat)}】${zwEsc(cut(x.clause))}`).join('') +
+    (srcs.length > 2 ? `<br>（另有 ${srcs.length - 2} 类条款见「口径依据」页）` : '');
+}
+
+/// 双击清单某条 → 直接跳到「判定」页判这一条（桌面端同款交互）
+function zwJudgeItem(el) {
+  const it = (zwState.data.items || []).find((x) => x.id === el.dataset.id);
+  if (!it) return;
+  zwTab('judge');
+  zwAsk(it.name);
+  const box = zwEl('zwQ');
+  if (box) { box.focus(); if (box.select) box.select(); }
+}
+
+function zwRenderEdges() {
+  const d = zwState.data;
+  if (!d) return;
+  const want = zwEl('zwESel').value || '全部';
+  const rows = (d.edges || []).filter((e) => want === '全部' || e.verdict === want);
+  const yes = rows.filter((e) => e.verdict === '可另收').length;
+  const dd = rows.filter((e) => e.verdict === '可另收（减收）').length;
+  const no = rows.filter((e) => e.verdict === '不可另收').length;
+  const ck = rows.filter((e) => e.verdict === '需核对').length;
+  zwEl('zwEStat').textContent = `${rows.length} 条：可另收 ${yes}` +
+    (dd ? ` · 可另收减收 ${dd}` : '') + ` · 不可另收 ${no} · 需核对 ${ck}`;
+  zwEl('zwEdges').innerHTML = rows.map((e) =>
+    `<div class="zgw-tr">` +
+    `<span class="nm" title="${zwEsc(e.name)}">${zwEsc(e.name)}</span>` +
+    `<span class="cv">${zwEsc(e.cat)}</span>` +
+    `<span><span class="zgw-verdict ${zwVerdictClass(e.verdict)}">${zwEsc(e.verdict)}</span></span>` +
+    `<span class="nt"><b>${zwEsc(e.basis)}</b>${zwEsc(e.note)}</span></div>`).join('');
+}
+
+function zwAskDelay() {
+  clearTimeout(zwTimer);
+  zwTimer = setTimeout(() => zwAsk(zwEl('zwQ').value || ''), 160);
+}
+
+async function zwAsk(q) {
+  const box = zwEl('zwQ');
+  if (box && box.value !== q) box.value = q;
+  zwState.q = q || '';
+  try {
+    const d = await fetch('/api/wuhao?q=' + encodeURIComponent(zwState.q)).then((r) => r.json());
+    if (d && d.verdict) zwPaintVerdict(d.verdict);
+  } catch { /* 断网时保留上一次结果 */ }
+}
+
+function zwPaintVerdict(v) {
+  const tone = v.tone || 'miss';
+  zwEl('zwCard').className = 'zgw-card ' + (tone === 'no' ? 'no' : tone === 'yes' ? 'yes' : tone === 'deduct' ? 'ded' : tone === 'check' ? 'chk' : 'miss');
+  zwEl('zwBadge').textContent = tone === 'no' ? '不可另收' : tone === 'yes' ? '可另收' : tone === 'deduct' ? '可另收·减收' : tone === 'check' ? '需核对' : '清单外';
+  zwEl('zwHead').textContent = v.head || '';
+  zwEl('zwBasis').textContent = v.basis || '';
+  zwEl('zwNote').textContent = v.note || '';
+  zwEl('zwNote').style.display = v.note ? '' : 'none';
+  const near = v.near || [];
+  zwEl('zwNear').classList.toggle('hidden', near.length === 0);
+  zwEl('zwNearList').innerHTML = near.map((n) =>
+    `<div>· ${zwEsc(n.name)}<span class="n">${zwEsc(n.catText)}</span></div>`).join('');
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCtx(); });
+
+// ============ 立项指南查询（只读，点击行展开完整说明） ============
+const lxState = { tab: '', page: 1, pageSize: 50, ready: false, openKey: null };
+
+async function lxInit() {
+  if (lxState.ready) return;
+  lxState.ready = true;
+  try {
+    const r = await fetch('/api/lixiang/sections').then((x) => x.json());
+    const tabs = Object.entries(r.tabs || {});
+    const grand = tabs.reduce((s, [, v]) => s + v.total, 0);
+    const sel = document.getElementById('lxTabSel');
+    sel.innerHTML = `<option value="">全部指南（${grand.toLocaleString()}）</option>` +
+      tabs.map(([tab, s]) => `<option value="${tab}">${esc(s.label)}（${s.total.toLocaleString()}）</option>`).join('');
+    const cats = r.categories || [];
+    document.getElementById('lxCatSel').innerHTML = `<option value="">全部类别</option>` +
+      cats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  } catch { /* 忽略 */ }
+  lxLoad(1);
+}
+
+function lxSwitch(tab) {
+  lxState.tab = tab || '';
+  lxState.openKey = null;
+  lxLoad(1);
+}
+
+function lxDetailHtml(row) {
+  // 多行字段逐行渲染；"01床旁X线摄影" 这类两位编号前缀渲染为徽章
+  const lines = (v) => String(v).split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  const withChips = (v) => lines(v).map((s) => {
+    const m = s.match(/^(\d{2})(?=\D|$)/);
+    return m
+      ? `<div class="ditem"><span class="chip">${esc(m[1])}</span>${esc(s.slice(m[1].length))}</div>`
+      : `<div class="ditem">${esc(s)}</div>`;
+  }).join('');
+  const plain = (v) => lines(v).map((s) => `<div class="ditem">${esc(s)}</div>`).join('');
+  const items = [
+    ['项目类别', row.category ? plain(row.category) : ''],
+    ['服务产出', row.serviceOutput ? plain(row.serviceOutput) : ''],
+    ['价格构成', row.priceComposition ? plain(row.priceComposition) : ''],
+    ['加收项', row.addItems ? withChips(row.addItems) : ''],
+    ['扩展项', row.extItems ? withChips(row.extItems) : ''],
+    ['使用说明（计价说明）', row.usage ? plain(row.usage) : ''],
+  ].filter(([, h]) => h);
+  return `<div class="dcard">` +
+    `<div class="dhead"><span class="dcode">#${esc(row.seq || '')}</span>` +
+    `<span class="dname">${esc(row.name)}</span>` +
+    `<button class="dclose" onclick="closeDetail(this)">收起</button></div>` +
+    `<div class="dgrid">` +
+    items.map(([k, h]) => dcell(k, h)).join('') +
+    `</div><div class="dxref"></div></div>`;
+}
+
+async function lxLoad(page) {
+  lxState.page = page || 1;
+  const q = document.getElementById('lxQ').value.trim();
+  const cat = document.getElementById('lxCatSel').value;
+  const flag = document.getElementById('lxFlagSel').value;
+  try {
+    const r = await fetch(`/api/lixiang/items?tab=${lxState.tab}&page=${lxState.page}&pageSize=${lxState.pageSize}` +
+      `&q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}&flag=${encodeURIComponent(flag)}`).then((x) => x.json());
+    if (r.error) { document.getElementById('lxBody').innerHTML = `<tr><td colspan="9" style="color:var(--danger)">${esc(r.error)}</td></tr>`; return; }
+    const usageBox = document.getElementById('lxUsageBox');
+    if (r.guideUsage) {
+      usageBox.classList.remove('hidden');
+      document.getElementById('lxUsageText').textContent = r.guideUsage;
+    } else usageBox.classList.add('hidden');
+    // 「区段」列只在区段首行显示文字（同桌面端 MarkSections）：同一段里每行都重复一遍
+    // 反而是噪音，滚动时也不好看。
+    const cols = r.columns.filter((c) => ['seq', 'name', 'category', 'unit', 'addItems', 'extItems', 'usage'].includes(c.key));
+    const allSections = !lxState.tab;
+    let prevSec = null;
+    const rowsHtml = (r.rows || []).map((row) => {
+      const key = `${row.section || ''}#${row.id}`;
+      const secCell = allSections
+        ? (() => { const v = row.section === prevSec ? '' : (row.section || ''); prevSec = row.section; return v; })()
+        : '';
+      const main = '<tr class="lx-row" onclick="lxToggle(\'' + key + '\', this)">' +
+        (allSections ? `<td class="lx-sec" title="${esc(row.section || '')}">${esc(secCell)}</td>` : '') +
+        cols.map((c) => {
+          const v = String(row[c.key] ?? '').replace(/\n+/g, '；');
+          return `<td class="${c.key === 'seq' ? 'mono-col' : ''}" title="${esc(v)}">${esc(dash(v))}</td>`;
+        }).join('') + '</tr>';
+      const detail = lxState.openKey === key
+        ? `<tr class="lx-detail"><td colspan="${cols.length + (allSections ? 1 : 0)}">${lxDetailHtml(row)}</td></tr>` : '';
+      return main + detail;
+    }).join('');
+
+    document.getElementById('lxHead').innerHTML =
+      '<tr>' + (allSections ? '<th>区段</th>' : '') + cols.map((c) => `<th title="${esc(c.label)}">${esc(c.label)}</th>`).join('') + '</tr>';
+    setColWidths('lxTable', (allSections ? '<col style="width:112px">' : '') +
+      cols.map((c) => c.key === 'usage' ? '<col>'
+        : `<col style="width:${c.key === 'name' ? 300
+          : (c.key === 'addItems' || c.key === 'extItems') ? 132
+            : Math.max(64, c.width || 100)}px">`).join(''));
+    document.getElementById('lxBody').innerHTML = r.rows.length
+      ? rowsHtml
+      : `<tr><td colspan="${cols.length + (allSections ? 1 : 0)}" style="text-align:center;color:var(--muted);padding:24px 0">无匹配记录</td></tr>`;
+    // 展开卡重绘后重新取一次关联（重绘会丢掉上一次的 DOM）
+    if (lxState.openKey) {
+      const openRow = (r.rows || []).find((x) => `${x.section || ''}#${x.id}` === lxState.openKey);
+      const card = document.querySelector('#lxBody tr.lx-detail .dcard');
+      if (openRow && card) dxFill(card.querySelector('.dxref'), 'lixiang', openRow.name);
+    }
+    pgSet('lx', 'lxPager', { page: r.page, pageSize: r.pageSize, total: r.total }, lxLoad);
+  } catch (e) {
+    document.getElementById('lxBody').innerHTML = `<tr><td colspan="9" style="color:var(--danger)">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function lxToggle(key, tr) {
+  lxState.openKey = lxState.openKey === key ? null : key;
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('lx-detail')) next.remove();
+  else lxLoad();
+}
+
+function lxMove(d) { lxLoad(Math.max(1, lxState.page + d)); }
+
+// ==========================================================================
+// 德州物价（四个视图与桌面端同构；列名 / 宽度 / 排序一列不差）
+// 数据走 /api/dezhou，导出走 /api/dezhou-export —— 与桌面端同一个 Core 过滤函数。
+// ==========================================================================
+const dzState = {
+  view: 'live', page: 1, pageSize: 50, ready: false, meta: null, rows: [], fav: new Set(),
+  cmpLevel: '3',          // 比对口径（只换差额 / 涨幅显示档位，不重新取数）
+  favOnly: false,         // 仅看收藏（同桌面端 FavOnly）
+};
+const DZ_FAV_KEY = 'dip3.dzFav';
+
+/**
+ * 现行项目的「扣减物耗」条件列（与桌面端 SyncDeductCol 同口径）：
+ * 25 号文只有「一般治疗」类 11 条有扣减额，其余 3,869 条全空白 —— 平时不占列宽；
+ * 筛到「一般治疗」或当前页出现带值行（如搜「换药费」）时，插在一级价格之后。
+ * 取列一律走本函数：表头 / colgroup / 行渲染 / 详情跨列数才能对得上。
+ */
+function dzCols(view) {
+  const base = DZ_COLS[view];
+  if (view !== 'live') return base;
+  const cat = (document.getElementById('dzCat') || {}).value || '';
+  const hasVal = (dzState.rows || []).some((r) => r.deduct);
+  if (cat !== '一般治疗' && !hasVal) return base;
+  const out = base.slice();
+  out.splice(base.findIndex((c) => c.k === 'price1') + 1, 0, { k: 'deduct', t: '扣减物耗', w: 100, num: 1 });
+  return out;
+}
+
+// 列定义：对应桌面端 Cols / CancelCols / LegacyCols / CmpCols（顺序一致，宽度同源）
+const DZ_COLS = {
+  live: [
+    { k: '_fav', t: '★', w: 44, center: 1 },
+    { k: 'code', t: '项目编码', w: 150, mono: 1 },
+    { k: 'name', t: '项目名称', w: 300 },
+    { k: 'category', t: '类别', w: 112 },
+    { k: 'unit', t: '单位', w: 62 },
+    { k: 'price3', t: '三级价格', w: 100, num: 1 },
+    { k: 'price2', t: '二级价格', w: 100, num: 1 },
+    { k: 'price1', t: '一级价格', w: 100, num: 1 },
+    { k: 'insurance', t: '医保支付', w: 92, center: 1 },
+    { k: 'selfPay', t: '自付比例', w: 92, center: 1 },
+    { k: 'doc', t: '落地文号', w: 104 },
+  ],
+  cancel: [
+    { k: 'doc', t: '批次 / 执行', w: 168 },
+    { k: 'category', t: '类别', w: 122 },
+    { k: 'oldCode', t: '作废编码', w: 100, mono: 1 },
+    { k: 'oldName', t: '作废项目名称', w: 280 },
+    { k: 'state', t: '状态', w: 60, center: 1 },
+    { k: 'newCode', t: '对应新编码 ▸', w: 126, mono: 1 },
+    { k: 'newName', t: '对应新项目', w: 176 },
+    { k: 'note', t: '备注', w: 88 },
+  ],
+  legacy: [
+    { k: 'code', t: '项目编码', w: 104, mono: 1 },
+    { k: 'name', t: '项目名称', w: 300 },
+    { k: 'category', t: '归集口径', w: 104 },
+    { k: 'unit', t: '单位', w: 58 },
+    { k: 'price3', t: '三级', w: 108, num: 1 },
+    { k: 'price2', t: '二级', w: 108, num: 1 },
+    { k: 'price1', t: '一级', w: 108, num: 1 },
+    { k: 'insurance', t: '医保', w: 58 },
+    { k: 'selfPay', t: '自付', w: 58 },
+    { k: 'status', t: '状态', w: 60 },
+    { k: 'currentStd', t: '现行标准 ▸', w: 246 },
+    { k: 'newMark', t: '', w: 40 },
+  ],
+  cmp: [
+    { k: 'newCode', t: '新项目编码 ▸', w: 132, mono: 1 },
+    { k: 'newName', t: '现行项目名称', w: 300 },
+    { k: 'category', t: '类别', w: 122 },
+    { k: 'newPrice3', t: '新三级价', w: 92, num: 1 },
+    { k: 'oldCode', t: '旧项目编码 ▸', w: 124, mono: 1 },
+    { k: 'oldName', t: '旧项目名称', w: 190 },
+    { k: 'oldPrice3', t: '旧三级价', w: 92, num: 1 },
+    { k: 'delta', t: '差额', w: 84, num: 1 },
+    { k: 'ratio', t: '涨幅', w: 78, num: 1 },
+    { k: 'source', t: '基准来源', w: 92 },
+  ],
+};
+
+function dzLoadFav() {
+  try {
+    const raw = localStorage.getItem(DZ_FAV_KEY);
+    dzState.fav = new Set(raw ? JSON.parse(raw) : []);
+  } catch { dzState.fav = new Set(); }
+}
+function dzSaveFav() {
+  try { localStorage.setItem(DZ_FAV_KEY, JSON.stringify([...dzState.fav])); } catch { /* 忽略 */ }
+}
+
+async function dzInit() {
+  if (!dzState.ready) {
+    dzState.ready = true;
+    dzLoadFav();
+  }
+  await dzLoadMeta();
+  dzFillFilters();
+  dzLoad(1);
+}
+
+/** 元数据（批次 / 类别 / 四个视图的统计）——比对口径变了要重取，涨跌统计按当前档位算 */
+async function dzLoadMeta() {
+  try {
+    const m = await fetch('/api/dezhou-meta?level=' + encodeURIComponent(dzState.cmpLevel)).then((x) => x.json());
+    if (!m.error) dzState.meta = m;
+  } catch { if (!dzState.meta) dzState.meta = null; }
+}
+
+/** 视图决定「类别」下拉的取值域：现行按项目类别，旧版按归集口径，作废按批次类别 */
+function dzFillFilters() {
+  const m = dzState.meta;
+  const docSel = document.getElementById('dzDoc');
+  if (docSel && m) {
+    const cur = docSel.value;
+    docSel.innerHTML = `<option value="">全部批次</option>` +
+      (m.docs || []).map((d) => `<option value="${esc(d)}"${d === cur ? ' selected' : ''}>${esc(d)}</option>`).join('');
+  }
+  const catSel = document.getElementById('dzCat');
+  if (catSel && m) {
+    const cur = catSel.value;
+    const list = dzState.view === 'legacy' ? (m.legacyCategories || [])
+      : dzState.view === 'cancel' ? (m.cancelCategories || [])
+        : (m.categories || []);
+    catSel.innerHTML = `<option value="">全部类别</option>` +
+      list.map((c) => `<option value="${esc(c)}"${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  }
+  dzPaintFavLabel();
+  dzPaintStat();
+}
+
+/**
+ * 统计条按当前视图换口径（桌面端 UpdateStat 的同一套文案）：
+ * 之前这条只画一次「现行项目」的统计，切到作废对照还写着「共 3,880 条」，跟表格里的 5,107 行打架。
+ */
+function dzPaintStat() {
+  const m = dzState.meta;
+  const el = document.getElementById('dzStat');
+  if (!el) return;
+  if (!m) { el.innerHTML = ''; return; }
+  const v = dzState.view;
+  const num = (x) => (x || 0).toLocaleString();
+  if (v === 'cancel') {
+    const c = m.cancelStat || {};
+    el.innerHTML = !c.total
+      ? '<span>尚未合并作废对照数据</span>'
+      : `<span>作废对照 <b>${num(c.total)}</b> 行${c.kept ? ` · 其中保留 <b>${num(c.kept)}</b>（原文划线，不作废）` : ''} · 有替代 <b>${num(c.mapped)}</b> · 直接废止 <b>${num(c.dead)}</b> · ` +
+        `${c.batches || 0} 批 / ${c.categories || 0} 类</span>`;
+    return;
+  }
+  if (v === 'legacy') {
+    const l = m.legacyStat || {};
+    el.innerHTML = !l.total
+      ? '<span>尚未合并旧版物价数据</span>'
+      : `<span>旧版物价 <b>${num(l.total)}</b> 条 · 已作废 <b>${num(l.dead)}</b> · 现行 <b>${num(l.live)}</b> · ` +
+        `${l.categories || 0} 个归集口径</span>`;
+    return;
+  }
+  if (v === 'cmp') {
+    const c = m.cmpStat || {};
+    const lv = dzState.cmpLevel === '2' ? '二级' : dzState.cmpLevel === '1' ? '一级' : '三级';
+    el.innerHTML = !c.total
+      ? '<span>暂无比对数据</span>'
+      : `<span>比对 <b>${num(c.total)}</b> 行 · 有旧价可比 <b>${num(c.priced)}</b>` +
+        `（降 <b class="num-down">${num(c.down)}</b> / 涨 <b class="num-up">${num(c.up)}</b> / 平 ${num(c.flat)}）` +
+        ` · 仅作废对照 ${num(c.cancelOnly)} · 纯新增 ${num(c.brandNew)} · 按${lv}医院价</span>`;
+    return;
+  }
+  const s = m.stat || {};
+  el.innerHTML = !s.total
+    ? '<span>尚未导入德州物价数据</span>'
+    : `<span>共 <b>${num(s.total)}</b> 条 · 主项目 ${num(s.main)} · 加收项 ${num(s.add)} · 扩展项 ${num(s.ext)} · ` +
+      `医保支付 ${num(s.insured)} · ${s.batchCount || 0} 批 / ${s.categoryCount || 0} 类</span>`;
+}
+
+function dzPaintFavLabel() {
+  const t = document.getElementById('dzFavTxt');
+  const n = dzState.fav.size;
+  if (t) t.textContent = n > 0 ? `仅看收藏（${n}）` : '仅看收藏';
+}
+
+function dzView(v) {
+  dzState.view = v;
+  dzState.page = 1;
+  dzState.rows = [];
+  ['live', 'cancel', 'legacy', 'cmp'].forEach((k) => {
+    document.getElementById('dzv' + k[0].toUpperCase() + k.slice(1)).classList.toggle('on', k === v);
+  });
+  // 各筛选只对「有这一列」的视图出现（同桌面端）：分级价 / 性质 / 医保 / 收藏只属现行项目，
+  // 比对范围与比对口径只属新旧比对，旧版物价只按归集口径筛。
+  document.getElementById('dzDoc').classList.toggle('hidden', v === 'legacy');
+  document.getElementById('dzKind').classList.toggle('hidden', v !== 'live');
+  document.getElementById('dzLevel').classList.toggle('hidden', v !== 'live');
+  document.getElementById('dzIns').classList.toggle('hidden', v !== 'live');
+  document.getElementById('dzFavWrap').classList.toggle('hidden', v !== 'live');
+  document.getElementById('dzScope').classList.toggle('hidden', v !== 'cmp');
+  document.getElementById('dzCmpLevel').classList.toggle('hidden', v !== 'cmp');
+  // 导出：桌面端只在「现行项目 / 新旧比对」两个视图给按钮（作废对照与旧版物价没有对应导出模板）
+  const canExp = v === 'live' || v === 'cmp';
+  document.getElementById('dzExpBtn').classList.toggle('hidden', !canExp);
+  document.getElementById('dzExpRange').classList.toggle('hidden', !canExp);
+  dzBuildExpRange(v);
+  dzFillFilters();
+  dzLoad(1);
+}
+
+/** 导出范围下拉随视图换口径：比对视图没有「仅收藏」 */
+function dzBuildExpRange(v) {
+  const sel = document.getElementById('dzExpRange');
+  if (!sel) return;
+  const cur = sel.value;
+  const opts = v === 'cmp'
+    ? [['all', '导出：全部比对结果'], ['page', '导出：仅当前页']]
+    : [['all', '导出：全部结果'], ['page', '导出：仅当前页'], ['fav', '导出：仅收藏']];
+  sel.innerHTML = opts.map(([val, t]) =>
+    `<option value="${val}"${val === cur ? ' selected' : ''}>${t}</option>`).join('');
+}
+
+/** 比对口径：只重画差额 / 涨幅与统计条，不重新取数（桌面端 ApplyCmpLevel 同样只换显示） */
+async function dzCmpLevelChange() {
+  dzState.cmpLevel = document.getElementById('dzCmpLevel').value || '3';
+  dzPaintStat();
+  const cols = dzCols(dzState.view);
+  document.getElementById('dzBody').innerHTML = dzState.rows.length
+    ? dzState.rows.map((row) => dzRowHtml(row, cols)).join('')
+    : `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:24px 0">无匹配记录</td></tr>`;
+  await dzLoadMeta();          // 统计条里的降 / 涨 / 平按新口径重算
+  dzPaintStat();
+}
+
+/** 清空：关键词与全部筛选复位（同桌面端 OnClear），只保留当前视图 */
+function dzClear() {
+  ['dzDoc', 'dzCat', 'dzKind', 'dzLevel', 'dzIns', 'dzScope', 'dzQ'].forEach((id) => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const fav = document.getElementById('dzFavOnly');
+  if (fav) { fav.checked = false; dzState.favOnly = false; }
+  dzState.cmpLevel = '3';
+  const lv = document.getElementById('dzCmpLevel'); if (lv) lv.value = '3';
+  dzLoad(1);
+}
+
+/** 当前比对口径下该行的差额 / 涨幅（null 表示无旧价可比） */
+function dzPick(row, kind) {
+  const lv = dzState.cmpLevel === '2' ? '2' : dzState.cmpLevel === '1' ? '1' : '3';
+  const v = row[kind + lv];
+  return v == null ? null : v;
+}
+
+function dzVal(row, c) {
+  if (c.k === 'delta' || c.k === 'ratio') {
+    const n = dzPick(row, c.k === 'delta' ? 'delta' : 'ratio');
+    if (n == null || row.oldSource !== 'legacy') return '—';
+    const sign = n > 0 ? '+' : '';
+    return sign + (c.k === 'delta' ? n.toFixed(2) : n.toFixed(1) + '%');
+  }
+  if (c.k === 'source') {
+    return row.oldSource === 'legacy' ? '旧版物价' : row.oldSource === 'cancel' ? '仅作废对照' : '纯新增';
+  }
+  return dash(row[c.k]);
+}
+
+function dzRowHtml(row, cols) {
+  const cells = cols.map((c) => {
+    if (c.k === '_fav') {
+      const on = dzState.fav.has(row.code);
+      return `<td style="text-align:center;padding:0"><span class="fav-star${on ? ' on' : ''}" ` +
+        `onclick="event.stopPropagation();dzFavRow(this)" title="收藏 / 取消收藏">${on ? '★' : '☆'}</span></td>`;
+    }
+    const v = dzVal(row, c);
+    let cls = c.mono ? 'mono-col' : '';
+    if (c.k === 'status') cls += row.isDead ? ' num-up' : ' num-down';
+    // 作废对照的状态：作废红 / 保留绿（通知废止表里划横线的行 = 不作废）
+    if (c.k === 'state') cls += row.keep ? ' num-down' : ' num-up';
+    if ((c.k === 'delta' || c.k === 'ratio') && /^[+-\d]/.test(v)) {
+      const n = dzPick(row, c.k === 'delta' ? 'delta' : 'ratio');
+      cls += n > 0 ? ' num-up' : n < 0 ? ' num-down' : ' num-flat';
+    }
+    const align = c.num || c.center ? 'text-align:center;' : '';
+    const title = c.k === 'doc' ? `${row.doc || ''} ${row.exec ? '· 执行 ' + row.exec : ''}` : v;
+    return `<td class="${cls}" style="${align}" title="${esc(title)}">${esc(v)}</td>`;
+  }).join('');
+  return `<tr class="dz-row" data-code="${esc(row.code || row.oldCode || row.newCode || '')}" onclick="dzToggle(this)">${cells}</tr>`;
+}
+
+function dzToggle(tr) {
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('dz-detail')) { next.remove(); tr.classList.remove('open'); return; }
+  const cols = dzCols(dzState.view);
+  const idx = Array.from(tr.parentNode.children).filter((x) => x.classList.contains('dz-row')).indexOf(tr);
+  const row = dzState.rows[idx];
+  if (!row) return;
+  tr.classList.add('open');
+  tr.insertAdjacentHTML('afterend',
+    `<tr class="dz-detail"><td colspan="${cols.length}">${dzDetailHtml(row)}</td></tr>`);
+  const card = tr.nextElementSibling.querySelector('.dcard');
+  if (dzState.view === 'live') dzFillUsage(card.querySelector('.dzuse'), row.doc, row.category);
+  // 关联只对现行项目有意义：作废 / 旧版 / 比对三个视图的名字是旧码或新码，
+  // 拿去找「同名」会命中一堆无关条目（桌面端也只在这三库的正式条目上挂关联）。
+  if (dzState.view === 'live') dxFill(card.querySelector('.dxref'), 'dezhou', row.name);
+}
+
+function dzDetailHtml(row) {
+  const rows = dzState.view === 'cmp'
+    ? [
+        ['新项目编码', row.newCode], ['现行项目名称', row.newName], ['类别', row.category],
+        ['新三级价', row.newPrice3], ['新二级价', row.newPrice2], ['新一级价', row.newPrice1],
+        ['旧项目编码', row.oldCode], ['旧项目名称', row.oldName],
+        ['旧三级价', row.oldPrice3], ['旧二级价', row.oldPrice2], ['旧一级价', row.oldPrice1],
+        ['基准来源', dzVal(row, { k: 'source' })],
+      ]
+    : dzState.view === 'cancel'
+      ? [
+          ['批次', row.doc], ['执行日期', row.exec], ['类别', row.category],
+          ['作废编码', row.oldCode], ['作废项目名称', row.oldName], ['状态', row.state],
+          ['对应新编码', row.newCode], ['对应新项目', row.newName], ['备注', row.note],
+        ]
+      : dzState.view === 'legacy'
+        ? [
+            ['项目编码', row.code], ['项目名称', row.name], ['归集口径', row.category], ['单位', row.unit],
+            ['三级/二级/一级', `${dash(row.price3)} / ${dash(row.price2)} / ${dash(row.price1)}`],
+            ['医保支付', row.insurance], ['自付比例', row.selfPay], ['状态', row.status],
+            ['现行标准', row.currentStd],
+          ]
+        : dzLiveFields(row);
+  // 空值一行都不留：桌面端 Add() 里空值直接 return，网页版原来一律打「—」，
+  // 一条器官移植项目 14 行里有 8 行是空杠，卡片比桌面端高两倍却什么也没多说。
+  // 类别级使用说明（桌面端：前 2 条 + 「本类共 N 条」），数据异步取，卡片先出来再补。
+  // 只有「现行项目」有这块——作废 / 旧版 / 比对三个视图桌面端也不挂类别说明。
+  const cat = dzState.view === 'live' ? (row.category || '') : '';
+  const useCell = cat
+    ? `<div class="dl">${esc(cat)} · 使用说明</div><div class="dv dzuse">…</div>`
+    : '';
+  return `<div class="dcard"><div class="dhead">` +
+    `<span class="dcode">${esc(dash(row.code || row.seq || ''))}</span>` +
+    `<span class="dname">${esc(row.name || row.newName || row.oldName || '')}</span>` +
+    (row.kind === 'add' ? '<span class="dmeta">加收项</span>'
+      : row.kind === 'ext' ? '<span class="dmeta">扩展项</span>' : '') +
+    `<button class="dclose" onclick="closeDetail(this)">收起</button></div>` +
+    dGrid(rows, useCell) +
+    `<div class="dxref"></div></div>`;
+}
+
+/**
+ * 现行项目的详情字段：顺序、合并口径逐条照桌面端 DezhouPriceView.BuildBlocks()。
+ * 桌面端卡片只有 4~5 行（三档价 / 落地文件 / 医保支付 / 类别·使用说明），
+ * 因为它把「表格里已有的列」（编码、类别、性质、单位）不算字段，空值也不占行。
+ */
+function dzLiveFields(row) {
+  const out = [];
+  const add = (k, v) => {
+    const s = String(v == null ? '' : v).trim();
+    if (!s || s === '—') return;
+    out.push([k, s]);
+  };
+  add('三级 / 二级 / 一级', `${dash(row.price3)} / ${dash(row.price2)} / ${dash(row.price1)}`);
+  if (row.doc || row.exec) add('落地文件', `${row.doc || ''}　执行日期 ${row.exec || ''}`);
+  add('服务产出', row.serviceOutput);
+  add('价格构成', row.priceComposition);
+  add('限定支付范围', row.note);
+  if (row.deduct) {
+    add('扣减基本物耗价格',
+      `${row.deduct} 元　（本项目价格中含可另行收费的基本物耗，收费时按此金额扣减）`);
+  }
+  add('计价说明', row.usage);
+  if (row.insurance) add('医保支付', `${row.insurance}　自付比例 ${dash(row.selfPay)}`);
+  return out;
+}
+
+/** 「本类说明共 N 条」点开后铺全文；再点一次收回前两条 */
+function dzUseAll(el) {
+  const box = el.parentNode;
+  const lines = box._lines || [];
+  if (!lines) return;
+  if (box.getAttribute('data-full') === '1') {
+    box.innerHTML = lines.slice(0, 2).map((t, i) => `${i + 1}. ${esc(t)}`).join('<br>') +
+      `<div class="dmore" onclick="dzUseAll(this)" data-more="1">` +
+      `…… 本类使用说明共 ${lines.length} 条 · 点击展开全部 ▸</div>`;
+    box.setAttribute('data-full', '0');
+    return;
+  }
+  box.innerHTML = lines.map((t, i) => `${i + 1}. ${esc(t)}`).join('<br>') +
+    `<div class="dmore" onclick="dzUseAll(this)" data-more="1">收起 ▴</div>`;
+  box.setAttribute('data-full', '1');
+}
+
+/** 取 (文号, 类别) 的使用说明，填进已展开卡片的那一格；取不到就把这格删掉 */
+function dzFillUsage(box, doc, cat) {
+  if (!box || !cat) return;
+  fetch('/api/dezhou-usage?doc=' + encodeURIComponent(doc || '') +
+        '&category=' + encodeURIComponent(cat))
+    .then((r) => r.json())
+    .then((r) => {
+      const lines = (r && r.lines) || [];
+      if (!lines.length) { box.previousElementSibling.remove(); box.remove(); return; }
+      const head = lines.slice(0, 2).map((t, i) => `${i + 1}. ${esc(t)}`).join('<br>');
+      // 桌面端这里写「点此定位查看全部 ▸」，跳的是页面上方的使用说明面板；
+      // 网页版物价页没有那个面板，右键改成就地展开全文，比留一句死文案有用
+      const more = lines.length > 2
+        ? `<div class="dmore" onclick="dzUseAll(this)">…… 本类使用说明共 ${lines.length} 条 · 点击展开全部 ▸</div>`
+        : '';
+      box.innerHTML = head + more;
+      box._lines = lines;
+    })
+    .catch(() => { box.previousElementSibling.remove(); box.remove(); });
+}
+
+function dzFav(code) {
+  if (dzState.fav.has(code)) dzState.fav.delete(code); else dzState.fav.add(code);
+  dzSaveFav();
+  dzPaintFavLabel();
+  dzLoad(dzState.page);
+}
+
+/** 星标点击：从所在行取编码，避免把编码拼进 onclick 字符串（编码里带引号会截断） */
+function dzFavRow(el) {
+  const tr = el.closest('tr');
+  const code = tr && tr.getAttribute('data-code');
+  if (code) dzFav(code);
+}
+
+async function dzLoad(page) {
+  dzState.page = page || 1;
+  const view = dzState.view;
+  const params = dzQueryParams();
+  params.set('view', view);
+  params.set('page', dzState.page);
+  params.set('pageSize', dzState.pageSize);
+  try {
+    const r = await fetch('/api/dezhou?' + params.toString()).then((x) => x.json());
+    if (r.error) { document.getElementById('dzBody').innerHTML = `<tr><td colspan="${DZ_COLS[view].length}" style="color:var(--danger)">${esc(r.error)}</td></tr>`; return; }
+    dzState.rows = r.rows || [];
+    // 列必须在拿到本页数据后再算：「扣减物耗」条件列要看当前页有没有带值行（dzCols 注释）
+    const cols = dzCols(view);
+    document.getElementById('dzHead').innerHTML =
+      '<tr>' + cols.map((c) => `<th${c.center || c.num ? ' style="text-align:center"' : ''}>${esc(c.t)}</th>`).join('') + '</tr>';
+    setColWidths('dzTable', cols.map((c) => `<col${c.w ? ` style="width:${c.w}px"` : ''}>`).join(''));
+    document.getElementById('dzBody').innerHTML = dzState.rows.length
+      ? dzState.rows.map((row) => dzRowHtml(row, cols)).join('')
+      : `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:24px 0">无匹配记录</td></tr>`;
+    pgSet('dz', 'dzPager', { page: r.page, pageSize: r.pageSize, total: r.total }, dzLoad);
+    dzPaintStat();
+  } catch (e) {
+    document.getElementById('dzBody').innerHTML = `<tr><td colspan="${cols.length}" style="color:var(--danger)">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+/**
+ * 表格与导出共用同一份筛选参数 —— 两边口径必须一致，否则「导出」出来的行数跟屏幕上的不一样。
+ * 仅看收藏要把收藏的编码一起发过去：收藏存在本机 localStorage，服务端并不知道。
+ */
+function dzQueryParams() {
+  const p = new URLSearchParams({
+    doc: document.getElementById('dzDoc').value,
+    category: document.getElementById('dzCat').value,
+    q: document.getElementById('dzQ').value.trim(),
+    kind: dzState.view === 'live' ? document.getElementById('dzKind').value : '',
+    level: dzState.view === 'live' ? document.getElementById('dzLevel').value : '',
+    insurance: dzState.view === 'live' ? document.getElementById('dzIns').value : '',
+    scope: dzState.view === 'cmp' ? document.getElementById('dzScope').value : '',
+  });
+  const favEl = document.getElementById('dzFavOnly');
+  dzState.favOnly = !!(favEl && favEl.checked && dzState.view === 'live');
+  if (dzState.favOnly) p.set('codes', [...dzState.fav].join(','));
+  return p;
+}
+
+/** 导出：现行 / 比对两个视图走服务端 xlsx（与桌面端同一份 DezhouExport） */
+function dzExport() {
+  const view = dzState.view;
+  if (view !== 'live' && view !== 'cmp') { toast('该视图没有导出模板'); return; }
+  const params = dzQueryParams();
+  params.set('view', view === 'cmp' ? 'cmp' : 'live');
+  params.set('range', document.getElementById('dzExpRange').value || 'all');
+  params.set('page', dzState.page);
+  params.set('pageSize', dzState.pageSize);
+  // 仅收藏导出：把收藏编码带过去（服务端不知道本机收藏）
+  if (params.get('range') === 'fav') params.set('codes', [...dzState.fav].join(','));
+  window.open('/api/dezhou-export?' + params.toString(), '_blank');
+}
+
+// ==========================================================================
+// 项目技术规范（列与桌面端 GuifanView 一致）
+// ==========================================================================
+const gfState = { page: 1, pageSize: 50, ready: false, rows: [] };
+const GF_COLS = [
+  { k: 'code', t: '项目编码', w: 92, mono: 1 },
+  { k: 'name', t: '项目名称', w: 320 },
+  { k: 'unit', t: '单位', w: 56 },
+  { k: 'difficulty', t: '技术难度', w: 80, num: 1 },
+  { k: 'risk', t: '风险程度', w: 80, num: 1 },
+  { k: 'hrValue', t: '人力消耗相对值', w: 118, num: 1 },
+  { k: 'bill', t: '收费票据分类', w: 100 },
+  { k: 'category', t: '类别', w: 64 },
+];
+
+async function gfInit() {
+  if (!gfState.ready) {
+    gfState.ready = true;
+    try {
+      const m = await fetch('/api/guifan-meta').then((x) => x.json());
+      document.getElementById('gfCat').innerHTML = `<option value="">全部类别</option>` +
+        (m.categories || []).map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      document.getElementById('gfChap').innerHTML = `<option value="">全部章节</option>` +
+        (m.chapters || []).map((c) => `<option value="${esc(c.name)}">${esc(c.name)}（${c.total}）</option>`).join('');
+      document.getElementById('gfUnit').innerHTML = `<option value="">全部单位</option>` +
+        (m.units || []).map((u) => `<option value="${esc(u.key)}">${esc(u.key)}（${u.total}）</option>`).join('');
+      const st = m.stat || {};
+      document.getElementById('gfStat').innerHTML =
+        `<span>共 <b>${(st.total || 0).toLocaleString()}</b> 个项目 · <b>${st.chapterCount || 0}</b> 章 · <b>${st.categoryCount || 0}</b> 个类别 · ` +
+        `含耗材 <b>${(st.withMaterial || 0).toLocaleString()}</b> 条</span>`;
+    } catch { /* 忽略 */ }
+  }
+  gfLoad(1);
+}
+
+async function gfLoad(page) {
+  gfState.page = page || 1;
+  const params = new URLSearchParams({
+    page: gfState.page, pageSize: gfState.pageSize,
+    category: document.getElementById('gfCat').value,
+    chapter: document.getElementById('gfChap').value,
+    unit: document.getElementById('gfUnit').value,
+    mat: document.getElementById('gfMat').value,
+    q: document.getElementById('gfQ').value.trim(),
+  });
+  try {
+    const r = await fetch('/api/guifan?' + params.toString()).then((x) => x.json());
+    if (r.error) { document.getElementById('gfBody').innerHTML = `<tr><td colspan="8" style="color:var(--danger)">${esc(r.error)}</td></tr>`; return; }
+    gfState.rows = r.items || r.rows || [];
+    document.getElementById('gfHead').innerHTML =
+      '<tr>' + GF_COLS.map((c) => `<th${c.num ? ' style="text-align:center"' : ''}>${esc(c.t)}</th>`).join('') + '</tr>';
+    setColWidths('gfTable', GF_COLS.map((c) => `<col${c.w ? ` style="width:${c.w}px"` : ''}>`).join(''));
+    document.getElementById('gfBody').innerHTML = gfState.rows.length
+      ? gfState.rows.map((row, i) =>
+          `<tr class="dz-row" data-i="${i}" onclick="gfToggle(this)">` + GF_COLS.map((c) =>
+            `<td class="${c.mono ? 'mono-col' : ''}" style="${c.num ? 'text-align:center;' : ''}" title="${esc(dash(row[c.k]))}">${esc(dash(row[c.k]))}</td>`).join('') + '</tr>').join('')
+      : `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px 0">无匹配记录</td></tr>`;
+    pgSet('gf', 'gfPager', { page: r.page, pageSize: r.pageSize, total: r.total }, gfLoad);
+  } catch (e) {
+    document.getElementById('gfBody').innerHTML = `<tr><td colspan="8" style="color:var(--danger)">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function gfToggle(tr) {
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('dz-detail')) { next.remove(); tr.classList.remove('open'); return; }
+  const row = gfState.rows[Number(tr.getAttribute('data-i'))];
+  if (!row) return;
+  // colspan 取列表长度：这里原来引用了不存在的 cols，异常直接冒泡，
+  // 规范详情卡从来没展开过（表格能看，点行没反应）
+  const rows = [
+    // 技术难度 / 风险程度 / 资源消耗已在上方量表里，字段区不再重复（桌面端同口径）
+    ['项目编码', row.code], ['英文名称', row.en], ['计价单位', row.unit],
+    ['人力配置', row.manpower], ['项目内涵', row.content],
+    ['必需耗材', row.required], ['可选耗材', row.optional], ['基本人力消耗', row.lowGrade],
+    ['收费票据分类', row.bill], ['核算科目', row.account], ['案例分类', row.caseFee],
+    ['章节', row.chapter], ['小节', row.section], ['页码', row.page],
+  ];
+  tr.classList.add('open');
+  tr.insertAdjacentHTML('afterend',
+    `<tr class="dz-detail"><td colspan="${GF_COLS.length}"><div class="dcard"><div class="dhead">` +
+    `<span class="dcode">${esc(dash(row.code))}</span><span class="dname">${esc(row.name || '')}</span>` +
+    (row.category ? `<span class="dmeta">${esc(dash(row.category))}</span>` : '') +
+    (row.unit ? `<span class="dmeta">单位 ${esc(dash(row.unit))}</span>` : '') +
+    `<button class="dclose" onclick="closeDetail(this)">收起</button></div>` +
+    gfMetersHtml(row) +
+    dGrid(rows) +
+    `<div class="dxref"></div></div></td></tr>`);
+  // 关联：技术规范条目 → 立项指南 / 德州物价
+  const card = tr.nextElementSibling.querySelector('.dcard');
+  dxFill(card.querySelector('.dxref'), 'guifan', row.name);
+}
+
+// ---------- 单条分组：清空 / 填入示例（与桌面端 SingleGroupView 同文案同行为） ----------
+function clearSingle() {
+  ['mainDiag', 'otherDiags', 'mainProc', 'otherProcs', 'age', 'birthWeight'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ageUnit').value = '';
+  document.getElementById('singleResult').innerHTML = '<div class="empty">输入病案信息后点击「分组」，或点「填入示例」先看一条结果</div>';
+  document.getElementById('mainDiag').focus();
+}
+
+function fillSample() {
+  document.getElementById('mainDiag').value = 'A09.901';
+  document.getElementById('otherDiags').value = '';
+  document.getElementById('mainProc').value = '44.1300x001';
+  document.getElementById('otherProcs').value = '';
+  document.getElementById('age').value = '45';
+  document.getElementById('ageUnit').value = '岁';
+  document.getElementById('birthWeight').value = '';
+  doGroup();
+}
+
+// ---------- 解读辅导（独立页签，紧凑表格 + 点击展开答案） ----------
+let jdReady = false, jdOpenKey = null, jdAcHits = [];
+let jdAcToken = 0;
+async function jdInit() {
+  if (jdReady) { jdLoad(); return; }
+  jdReady = true;
+  await jdLoad();
+}
+
+// ---------- 立项指南: 视图切换（价格项目 / 解读辅导） ----------
+function lxView(v) {
+  document.getElementById('lxvItems').classList.toggle('on', v === 'items');
+  document.getElementById('lxvJiedu').classList.toggle('on', v === 'jiedu');
+  document.getElementById('lxItemsView').classList.toggle('hidden', v !== 'items');
+  document.getElementById('lxJieduView').classList.toggle('hidden', v !== 'jiedu');
+  if (v === 'items') lxInit();
+  else jdInit();
+}
+
+/** 标题联想: 服务端检索(含拼音/首字母), 提取标题关键信息, 点选直接定位展开 */
+async function jdSuggest() {
+  const box = document.getElementById('jdAcList');
+  const kw = document.getElementById('jdQ').value.trim();
+  if (!kw) { box.classList.remove('show'); return; }
+  const token = ++jdAcToken;
+  let hits = [];
+  try {
+    const r = await fetch(`/api/lixiang/jiedu?q=${encodeURIComponent(kw)}`).then((x) => x.json());
+    if (token !== jdAcToken) return; // 已有更新的输入, 丢弃过期响应
+    jdAcHits = r.items || [];
+    hits = jdAcHits.slice(0, 30);
+  } catch { return; }
+  box.innerHTML = hits.length
+    ? hits.map((it) => {
+        const key = it.issue + '#' + it.no;
+        // 标题中提取关键词上下文: 命中位置前后各 14 字
+        const q = it.q || '';
+        const pos = q.toUpperCase().indexOf(kw.toUpperCase());
+        const frag = pos >= 0
+          ? (pos > 14 ? '…' : '') + q.slice(Math.max(0, pos - 14), pos + kw.length + 14) + (pos + kw.length + 14 < q.length ? '…' : '')
+          : q.slice(0, 40) + (q.length > 40 ? '…' : '');
+        return `<div class="ac-item" onclick="jdPick('${key}')">` +
+          `<div class="nm"><b class="code">第${it.issue}期·${it.no}</b>　${esc(frag)}</div></div>`;
+      }).join('') +
+      (hits.length >= 30 ? '<div class="ac-more" style="padding:6px 12px;font-size:11px;color:var(--muted)">匹配较多，仅显示前 30 条——请继续输入更具体的关键词</div>' : '')
+    : '<div class="ac-more" style="padding:8px 12px;font-size:12px;color:var(--muted)">无匹配的解读条目</div>';
+  box.classList.add('show');
+}
+
+function jdPick(key) {
+  document.getElementById('jdAcList').classList.remove('show');
+  const it = (jdAcHits || []).find((x) => x.issue + '#' + x.no === key);
+  if (!it) return;
+  document.getElementById('jdQ').value = it.q; // 以完整标题过滤，精确命中
+  document.getElementById('jdIssue').value = '';
+  jdOpenKey = key;
+  jdLoad();
+}
+
+// 点击其他区域收起联想
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#lxJieduView .ac-wrap')) document.getElementById('jdAcList')?.classList.remove('show');
+});
+
+async function jdLoad() {
+  const issue = document.getElementById('jdIssue').value || '';
+  const q = document.getElementById('jdQ').value.trim();
+  try {
+    const r = await fetch(`/api/lixiang/jiedu?issue=${issue}&q=${encodeURIComponent(q)}`).then((x) => x.json());
+    const sel = document.getElementById('jdIssue');
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">全部期次</option>` +
+      (r.issues || []).map((x) => `<option value="${x.issue}" ${String(x.issue) === cur ? 'selected' : ''}>第${x.issue}期（${x.total}条）</option>`).join('');
+    document.getElementById('jdBadge').textContent = (r.issues || []).length + '期';
+    document.getElementById('jdHead').innerHTML = '<tr><th>期次</th><th>题号</th><th>解读问题</th></tr>';
+    // colgroup 必须挂在 <table> 下：塞进 <thead> 会被 HTML 解析器直接丢掉（列宽静默失效）
+    setColWidths('jdTable', '<col style="width:92px"><col style="width:72px"><col>');
+    document.getElementById('jdBody').innerHTML = (r.items || []).length
+      ? r.items.map((it) => {
+          const key = it.issue + '#' + it.no;
+          const main = '<tr class="lx-row" onclick="jdToggle(\'' + key + '\', this)">' +
+            `<td class="mono-col">第${it.issue}期</td><td class="mono-col">${it.no}</td>` +
+            `<td title="${esc(it.q)}">${esc(it.q)}</td></tr>`;
+          const detail = jdOpenKey === key
+            ? `<tr class="lx-detail"><td colspan="3"><div class="dcard">` +
+              `<div class="dhead"><span class="dcode">第${it.issue}期 · ${it.no}</span><span class="dname">${esc(it.q)}</span>` +
+              `<button class="dclose" onclick="closeDetail(this)">收起</button></div>` +
+              `<div class="dqa">${esc(it.a)}</div></div></td></tr>` : '';
+          return main + detail;
+        }).join('')
+      : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px 0">无匹配的解读条目</td></tr>';
+    document.getElementById('jdPageInfo').textContent = `共 ${(r.issues || []).length} 期 · 命中 ${r.total} 条问答`;
+  } catch (e) {
+    document.getElementById('jdBody').innerHTML = `<tr><td colspan="3" style="color:var(--danger);padding:16px 0">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function jdToggle(key, tr) {
+  jdOpenKey = jdOpenKey === key ? null : key;
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('lx-detail')) next.remove();
+  else jdLoad();
+}
+
+function badge(code, text) {
+  return `<span class="badge ${code || 'NONE'}">${text}</span>`;
+}
+
+// ---------- 单条 ----------
+async function doGroup() {
+  const mainDiag = document.getElementById('mainDiag').value.trim();
+  const btn = document.getElementById('btnGroup');
+  if (!mainDiag && !document.getElementById('mainProc').value.trim()) {
+    alert('请至少填写主要诊断编码或主要手术操作编码');
+    return;
+  }
+  const kase = {
+    mainDiag,
+    otherDiags: document.getElementById('otherDiags').value.trim(),
+    mainProc: document.getElementById('mainProc').value.trim(),
+    otherProcs: document.getElementById('otherProcs').value.trim(),
+  };
+  const age = document.getElementById('age').value.trim();
+  if (age !== '') { kase.age = age; kase.ageUnit = document.getElementById('ageUnit').value; }
+  const bw = document.getElementById('birthWeight').value.trim();
+  if (bw !== '') kase.birthWeight = bw;
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>分组中…';
+  try {
+    const payload = { case: kase, useMapping: document.getElementById('useMappingSingle').checked };
+    // /api/group 保持与 Node 版逐字节一致（不含溯源）；溯源走独立接口，失败不影响主结果
+    const [r, tr] = await Promise.all([
+      fetch('/api/group', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(x => x.json()),
+      fetch('/api/group-trace', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(x => x.json()).catch(() => null),
+    ]);
+    renderSingle(r, tr && tr.trace);
+  } catch (e) {
+    document.getElementById('singleResult').innerHTML = `<div class="err">请求失败: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '分 组';
+  }
+}
+
+function renderSingle(r, trace) {
+  const box = document.getElementById('singleResult');
+  const traceHtml = traceHtmlOf(trace);
+  if (r.error) {
+    box.innerHTML = `
+      <div class="r-head">${badge('NONE', '请求错误')}</div>
+      <div class="r-name" style="color:var(--warn)">${esc(r.error)}</div>`;
+    return;
+  }
+  if (!r.matched) {
+    box.innerHTML = `
+      <div class="r-head">${badge('NONE', '未入组')}</div>
+      <div class="r-name">${r.reason || ''}</div>
+      ${traceHtml}
+      <details><summary>技术明细（调试用）</summary><pre>${esc(JSON.stringify(r.detail || { mainDiag: document.getElementById('mainDiag').value.trim(), mainProc: document.getElementById('mainProc').value.trim(), otherDiags: document.getElementById('otherDiags').value.trim() }, null, 2))}</pre></details>`;
+    return;
+  }
+  const d = r.detail || {};
+  // detail 字段中文标签
+  const FIELD_ZH = {
+    mainDiag: '主要诊断',
+    mainProc: '主要手术操作',
+    conservative: '保守治疗（无手术）',
+    relatedRequired: '需相关手术',
+    rule: '分组规则',
+    procAlts: '手术编码组合',
+    subType: '病种类别',
+    degree: '烧伤程度',
+    area: '烧伤面积',
+    otherDiagCodes: '其他诊断编码',
+    diagCodes: '诊断编码范围',
+    drugResistant: '耐药菌株',
+    diagExcluded: '命中诊断排除',
+    excludedProc: '命中手术排除',
+    ageDays: '日龄',
+    birthWeight: '出生体重（克）',
+    birthWeightNote: '体重分档',
+    category: '主诊断类目',
+    range: '覆盖范围',
+    viaExcluded: '命中排除表',
+  };
+  const fmtVal = (v) => {
+    if (typeof v === 'boolean') return v ? '是' : '否';
+    if (Array.isArray(v)) return v.join('；');
+    if (v && typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  };
+  const kv = Object.entries(d)
+    .filter(([k]) => k !== 'procName' && k !== 'dipDiagCode')
+    .map(([k, v]) => `<div class="k">${FIELD_ZH[k] || k}</div><div class="v">${esc(fmtVal(v))}</div>`)
+    .join('');
+  let translateHtml = '';
+  if (r.translate) {
+    const t = r.translate.mainDiag || {};
+    const items = r.translate.otherDiags || [];
+    const grayCount = [t, ...items].filter(x => x && x.gray).length;
+    // 三段链: 国临版输入码 → 医保版2.0码 → DIP 3.0 病种库编码
+    const chain = `${t.from || d.mainDiag || ''} → ${t.to || t.from || d.mainDiag || ''} → ${d.dipDiagCode || '—'}`;
+    translateHtml = `<div class="chain-box">
+      <div class="k">主诊断映射</div><div class="v">${t.gray ? '⚠ 命中灰码，保留原码　' : ''}${esc(chain)}</div>
+      ${grayCount ? `<div class="k">灰码提示</div><div class="v">⚠ 其他诊断中有 ${grayCount} 个灰码已保留原码</div>` : ''}
+    </div>`;
+  } else if (d.dipDiagCode) {
+    // 映射未启用: 两段链 输入码 → DIP 3.0 病种库编码
+    translateHtml = `<div class="chain-box">
+      <div class="k">主诊断映射</div><div class="v">${esc(String(d.mainDiag || ''))} → ${esc(d.dipDiagCode)}</div>
+    </div>`;
+  }
+  box.innerHTML = `
+    <div class="r-head">
+      ${badge(r.groupTypeCode, r.groupType)}
+      <span class="r-seq">病种序号 #${r.seq}</span>
+    </div>
+    <div class="r-name">${esc(r.name || '')}</div>
+    <div class="kv">${kv}</div>
+    ${translateHtml}
+    ${traceHtml}
+    <details><summary>技术明细（调试用）</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details>`;
+}
+
+// ---------- 分组溯源（逐层判定过程） ----------
+const TRACE_LABEL = { hit: '命中', warn: '影响', skip: '跳过', ok: '无影响' };
+function traceHtmlOf(tr) {
+  if (!tr || !Array.isArray(tr.steps) || !tr.steps.length) return '';
+  const hit = tr.steps.find(s => s.status === 'hit');
+  const head = `<div class="trace-head">分组溯源<span class="sub">${hit
+    ? `按优先级共 ${tr.steps.length} 层 · 命中于「${esc(hit.layer)}」第 ${hit.seq} 行`
+    : `按优先级共 ${tr.steps.length} 层 · 全部未命中`}</span></div>`;
+  const steps = tr.steps.map(s => {
+    const tone = s.status === 'hit' ? 'hit' : s.status === 'warn' ? 'warn' : s.status === 'skip' ? 'skip' : '';
+    const facts = (s.facts || []).map(f =>
+      `<div class="trace-fact"><div class="fk">${esc(f.label || '')}</div><div class="fv ${esc(f.tone || '')}">${esc(f.value ?? '')}</div></div>`).join('');
+    return `<div class="trace-step"><div class="trace-bar ${tone}"></div><div class="trace-body">
+      <div class="trace-lhead">${esc(s.layer || '')}<span class="trace-pill ${tone}">${TRACE_LABEL[s.status] || esc(s.status || '')}</span>${s.ruleCount ? `<span class="trace-rule">${s.ruleCount} 条规则</span>` : ''}</div>
+      ${s.title ? `<div class="trace-title ${tone}">${esc(s.title)}</div>` : ''}${facts}
+    </div></div>`;
+  }).join('');
+  return `<div class="trace-box">${head}${steps}</div>`;
+}
+
+// ---------- 批量 ----------
+function showBatch(rows, summary, token) {
+  lastToken = token;
+  const tbody = document.querySelector('#batchTable tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.seq}</td>
+      <td class="mono">${esc(r.caseId)}</td>
+      <td class="mono">${esc(r.mainDiag)}</td>
+      <td class="mono">${esc(r.mainProc)}</td>
+      <td>${r.matched ? '<span style="color:var(--ok);font-weight:600">是</span>' : '<span style="color:var(--warn)">否</span>'}</td>
+      <td>${badge(r.groupTypeCode, r.groupType || '—')}</td>
+      <td class="mono">${r.dipSeq ?? ''}</td>
+      <td>${esc(r.matched ? r.name : r.reason)}</td>
+    </tr>`).join('');
+  document.getElementById('batchTableWrap').style.display = 'block';
+  const typeStr = Object.entries(summary.byType).map(([k, v]) => `${k} ${v}`).join('｜');
+  document.getElementById('batchSummary').style.display = 'flex';
+  document.getElementById('batchSummary').innerHTML =
+    `<span>共 <b>${summary.total}</b> 条</span><span>入组 <b style="color:var(--ok)">${summary.matched}</b> 条</span><span>未入组 <b style="color:var(--warn)">${summary.total - summary.matched}</b> 条</span><span>${typeStr}</span>`;
+  document.getElementById('btnDownload').style.display = 'inline-block';
+  document.getElementById('batchErr').textContent = '';
+}
+
+async function doBatchFile() {
+  const input = document.getElementById('batchFile');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  fd.append('useMapping', document.getElementById('useMappingBatch').checked ? '1' : '0');
+  document.getElementById('batchErr').textContent = '';
+  try {
+    const r = await fetch('/api/batch-file', { method: 'POST', body: fd }).then(x => x.json());
+    if (r.error) { document.getElementById('batchErr').textContent = r.error; return; }
+    showBatch(r.rows, r.summary, r.token);
+  } catch (e) {
+    document.getElementById('batchErr').textContent = '上传失败: ' + e.message;
+  }
+}
+
+async function doBatchText() {
+  const text = document.getElementById('batchText').value.trim();
+  if (!text) { alert('请先粘贴病案数据'); return; }
+  let rows;
+  try {
+    rows = parseText(text);
+  } catch (e) {
+    document.getElementById('batchErr').textContent = '文本解析失败: ' + e.message;
+    return;
+  }
+  document.getElementById('batchErr').textContent = '';
+  try {
+    const r = await fetch('/api/batch', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ rows, useMapping: document.getElementById('useMappingBatch').checked }) }).then(x => x.json());
+    if (r.error) { document.getElementById('batchErr').textContent = r.error; return; }
+    showBatch(r.rows, r.summary, r.token);
+  } catch (e) {
+    document.getElementById('batchErr').textContent = '请求失败: ' + e.message;
+  }
+}
+
+/** 支持两种格式: 每行 JSON；或首行列名的 TSV（可直接从 Excel 复制） */
+function parseText(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines[0].startsWith('{')) {
+    return lines.map(l => JSON.parse(l));
+  }
+  const headers = lines[0].split('\t').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const cells = line.split('\t');
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (cells[i] || '').trim(); });
+    return row;
+  });
+}
+
+function doDownload() {
+  if (lastToken) window.open('/api/download/' + lastToken, '_blank');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 回车触发单条分组（联想下拉打开时由下拉处理: Enter=选中）
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('panelSingle').classList.contains('hidden') &&
+      !['batchText'].includes(e.target.id) && e.target.tagName === 'INPUT' && !acState.open) {
+    doGroup();
+  }
+});
+
+// ============ 诊断/手术联想下拉 ============
+const acState = { input: null, list: null, items: [], idx: -1, open: false, timer: null, multi: false, kind: 'diag', total: 0 };
+
+function acQueryOf(input) {
+  if (!acState.multi) return input.value.trim();
+  // 多段输入: 取最后一个分隔符后的片段作为检索词
+  const segs = input.value.split(/[|;；]/);
+  return (segs[segs.length - 1] || '').trim();
+}
+
+function acReplaceCurrent(input, code) {
+  if (!acState.multi) { input.value = code; return; }
+  // 多段输入: 替换最后一个片段, 统一用 ; 分隔
+  const parts = input.value.split(/[|;；]/);
+  parts[parts.length - 1] = code;
+  input.value = parts.filter((p, i) => !(p === '' && i === parts.length - 1)).join(';') + ';';
+}
+
+function acRender() {
+  const { list, items, idx } = acState;
+  if (!items.length) {
+    list.innerHTML = '<div class="ac-empty">无匹配项（可按编码或名称检索）</div>';
+  } else {
+    list.innerHTML = items.map((it, i) => {
+      if (acState.kind === 'proc') {
+        return `<div class="ac-item ${i === idx ? 'on' : ''}" data-i="${i}">
+          <div><span class="code">${esc(it.code)}</span> <span class="nm">${esc(it.name)}</span>${it.linked ? '<span class="ac-tag">联动</span>' : ''}</div>
+        </div>`;
+      }
+      const dipTxt = (it.dip || []).map(d => `[${esc(d.type)}]#${d.seq} ${esc(d.name)}`).join(' · ');
+      return `<div class="ac-item ${it.gray ? 'grayed' : ''} ${i === idx ? 'on' : ''}" data-i="${i}">
+        <div><span class="code">${esc(it.code)}</span> <span class="nm">${esc(it.name)}</span>${it.gray ? '<span class="ac-tag">灰码·保留原码</span>' : ''}${it.linked ? '<span class="ac-tag">联动</span>' : ''}</div>
+        <div class="map">医保版2.0: ${esc(it.insCode) || '—'} ${it.insName && it.insName !== it.name ? esc(it.insName) : ''}</div>
+        ${dipTxt ? `<div class="dips">DIP病种: ${dipTxt}</div>` : ''}
+      </div>`;
+    }).join('') + (acState.total > items.length
+      ? `<div class="ac-more">共匹配 ${acState.total} 条，仅显示前 ${items.length} 条——请继续输入更具体的关键词，如「细菌性肺炎」</div>`
+      : '');
+  }
+  list.classList.add('show');
+  acState.open = true;
+  const on = list.querySelector('.ac-item.on');
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+
+function acHide() {
+  if (acState.list) acState.list.classList.remove('show');
+  acState.open = false;
+  acState.idx = -1;
+}
+
+/** 主诊断联动建议: 其他诊断(面积码等)/相关手术 —— 空检索词时按主诊断带出 */
+async function acFetchLinked(input) {
+  const md = document.getElementById('mainDiag').value.trim();
+  if (!md) { acHide(); return; }
+  try {
+    const r = await fetch('/api/suggest-linked?mainDiag=' + encodeURIComponent(md)).then(x => x.json());
+    if (acState.input !== input) return;
+    const kind = acState.kind;
+    let items = [];
+    if (kind === 'proc') items = r.procs || [];
+    else if (kind === 'diag') items = r.otherDiags || [];
+    // 已录入的码不再重复建议
+    const segs = (input.value || '').split(/[|;；]/).map(s => s.trim().toUpperCase()).filter(Boolean);
+    items = items.filter(it => !segs.includes(String(it.code).toUpperCase()));
+    acState.items = items.slice(0, 30);
+    acState.total = 0;
+    acState.idx = acState.items.length ? 0 : -1;
+    if (acState.items.length) acRender(); else acHide();
+  } catch { /* 忽略网络错误 */ }
+}
+
+async function acFetch(input, list, multi, kind) {
+  const q = acQueryOf(input);
+  if (!q) {
+    // 空检索词: 主诊断已填时给联动建议
+    if (kind === 'proc' || (kind === 'diag' && multi)) return acFetchLinked(input);
+    acHide();
+    return;
+  }
+  try {
+    const api = kind === 'proc' ? '/api/suggest-proc' : '/api/suggest-diag';
+    const r = await fetch(api + '?q=' + encodeURIComponent(q) + '&limit=30').then(x => x.json());
+    // 竞态保护: 仅展示最后一次请求的结果
+    if (acState.input !== input) return;
+    acState.items = r.items || [];
+    acState.total = r.total || 0;
+    acState.idx = acState.items.length ? 0 : -1;
+    acRender();
+  } catch { /* 忽略网络错误 */ }
+}
+
+function acAttach(inputId, listId, multi, kind = 'diag') {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  input.addEventListener('focus', () => {
+    acState.input = input; acState.list = list; acState.multi = multi; acState.kind = kind;
+    // 聚焦且为空时直接带出主诊断联动建议
+    if (!input.value.trim() && (kind === 'proc' || multi)) acFetchLinked(input);
+  });
+  input.addEventListener('input', () => {
+    acState.input = input; acState.list = list; acState.multi = multi; acState.kind = kind;
+    clearTimeout(acState.timer);
+    acState.timer = setTimeout(() => acFetch(input, list, multi, kind), 180);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (!acState.open || acState.input !== input) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!acState.items.length) return;
+      acState.idx = (acState.idx + (e.key === 'ArrowDown' ? 1 : -1) + acState.items.length) % acState.items.length;
+      acRender();
+    } else if (e.key === 'Enter') {
+      if (acState.idx >= 0 && acState.items[acState.idx]) {
+        e.preventDefault(); e.stopPropagation();
+        acPick(acState.items[acState.idx]);
+      }
+    } else if (e.key === 'Escape') {
+      acHide();
+    }
+  });
+}
+
+function acPick(it) {
+  if (!acState.input) return;
+  acReplaceCurrent(acState.input, it.code);
+  // 选中映射项后自动启用映射转换
+  if (!it.gray && it.insCode) {
+    const single = document.getElementById('useMappingSingle');
+    const batch = document.getElementById('useMappingBatch');
+    if (single) single.checked = true;
+    if (batch) batch.checked = true;
+  }
+  acHide();
+  acState.input.focus();
+}
+
+// 鼠标按下即选中（先于 blur）; 悬浮切换高亮
+document.addEventListener('mousedown', (e) => {
+  const item = e.target.closest('.ac-item');
+  if (item && acState.items[+item.dataset.i]) {
+    e.preventDefault();
+    acPick(acState.items[+item.dataset.i]);
+  } else if (!e.target.closest('.ac-wrap')) {
+    acHide();
+  }
+});
+document.addEventListener('mousemove', (e) => {
+  const item = e.target.closest('.ac-item');
+  if (item && acState.open) {
+    const i = +item.dataset.i;
+    if (i !== acState.idx) { acState.idx = i; acRender(); }
+  }
+});
+
+acAttach('mainDiag', 'acMainDiag', false, 'diag');
+acAttach('otherDiags', 'acOtherDiags', true, 'diag');
+acAttach('mainProc', 'acMainProc', false, 'proc');
+acAttach('otherProcs', 'acOtherProcs', true, 'proc');
+
+// 品牌跟随「后台 → 系统设置 → 软件名称」；接口不可用时保留页面自带的默认文案
+(async function loadBrand() {
+  try {
+    const r = await (await fetch('/api/settings/public')).json();
+    if (r.appName) {
+      document.title = r.appName;
+      document.getElementById('navName').textContent = r.appName;
+      document.getElementById('navMark').textContent = r.logoText || 'DIP';
+    }
+    if (r.appSubName) document.getElementById('navSub').textContent = r.appSubName;
+  } catch (e) { /* 保留默认文案 */ }
+})();
+
+// ==================== 消息中心 ====================
+// 来源：后台「消息推送」页。逐条状态（已读 / 本机关闭）存 localStorage，
+// 只影响这一台浏览器，不打扰别人；每 60 秒检查一次新消息。
+const ND_SEEN = 'dip3_notice_seen_v1';
+const ND_HIDDEN = 'dip3_notice_hidden_v1';
+const ND_AUTO = 'dip3_notice_auto_v1';
+const ND_ICON = { info: 'ℹ', warn: '⚠', danger: '⛔' };
+
+const ndState = { items: [], fresh: [], open: false, rev: -1, timer: null, at: 0 };
+
+/** 一条消息的「身份」= id + 更新时间：后台改了内容就会重新变成本机未读 */
+function ndKey(n) { return n.id + '@' + (n.updatedAt || ''); }
+
+function ndMap(k) {
+  try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; }
+}
+function ndPut(k, m) {
+  // 只保留最近 300 条记录，长期使用不会把 localStorage 撑爆
+  const ks = Object.keys(m);
+  if (ks.length > 300) { const cut = {}; ks.slice(-300).forEach(x => { cut[x] = 1; }); m = cut; }
+  try { localStorage.setItem(k, JSON.stringify(m)); } catch (e) { /* 无痕模式等，忽略 */ }
+}
+function ndUnread(items) {
+  const seen = ndMap(ND_SEEN);
+  return (items || []).filter(n => !seen[ndKey(n)]);
+}
+function ndTime(s) {
+  const t = String(s || '').replace('T', ' ');
+  if (t.length < 16) return t;
+  return t.startsWith(String(new Date().getFullYear())) ? t.slice(5, 16) : t.slice(0, 16);
+}
+function ndLv(lv) { return (lv === 'warn' || lv === 'danger') ? lv : 'info'; }
+
+/** 拉取当前生效的消息并整体重绘 */
+async function ndLoad() {
+  let r;
+  try { r = await (await fetch('/api/notice')).json(); } catch (e) { return; }   // 网络异常：静默保持现状
+  if (!r || !Array.isArray(r.items)) return;
+  const changed = r.rev !== ndState.rev;
+  const hidden = ndMap(ND_HIDDEN);
+  ndState.items = r.items.filter(n => !hidden[ndKey(n)]);
+  ndState.rev = r.rev;
+  ndState.at = Date.now();
+  ndRenderBell();
+  if (changed) {
+    ndRenderBar();
+    if (ndState.open) {
+      // 抽屉正开着时新到的消息：直接按「已读」处理并标上「新」，免得用户盯着的列表在计数器上还挂着未读
+      const nu = ndUnread(ndState.items);
+      if (nu.length) {
+        ndState.fresh = ndState.fresh.concat(nu.map(n => n.id));
+        const seen = ndMap(ND_SEEN);
+        nu.forEach(n => { seen[ndKey(n)] = 1; });
+        ndPut(ND_SEEN, seen);
+        ndRenderBell();
+      }
+      ndRenderDrawer();
+    }
+  }
+  // 每个浏览器会话只自动展开一次：打开页面若有未读，主动弹一次（这就是「推送」的意义）
+  if (!ndState.open && !sessionStorage.getItem(ND_AUTO) && ndUnread(ndState.items).length) {
+    sessionStorage.setItem(ND_AUTO, '1');
+    setTimeout(() => ndOpen(true), 500);
+  }
+}
+
+function ndRenderBell() {
+  const bell = document.getElementById('nbBell');
+  const badge = document.getElementById('nbBadge');
+  const n = ndState.items.length;
+  bell.classList.toggle('on', n > 0);
+  const unread = ndUnread(ndState.items).length;
+  badge.textContent = unread > 99 ? '99+' : String(unread);
+  badge.classList.toggle('on', unread > 0);
+}
+
+/** 钉住的消息：导航栏下方常驻横幅（只显示第一条，其余在抽屉里） */
+function ndRenderBar() {
+  const bar = document.getElementById('nbBar');
+  const pin = ndState.items.filter(n => n.pinned)[0];
+  if (!pin) {
+    bar.className = '';
+    bar.removeAttribute('data-id');
+    ndSyncBar();
+    return;
+  }
+  bar.className = 'on lv-' + ndLv(pin.level);
+  bar.setAttribute('data-id', pin.id);
+  document.getElementById('nbBarIc').textContent = ND_ICON[ndLv(pin.level)];
+  document.getElementById('nbBarTx').innerHTML =
+    (pin.title ? '<b>' + esc(pin.title) + '</b>' : '') + esc((pin.body || '').split('\n')[0] || '');
+  document.getElementById('nbBarTx').title = pin.title ? pin.title + '\n' + pin.body : pin.body;
+  ndSyncBar();
+}
+
+/** 横幅高度会随内容/字号变化，量出来喂给 body 的 padding，避免正文被盖住 */
+function ndSyncBar() {
+  const bar = document.getElementById('nbBar');
+  const on = bar.classList.contains('on');
+  document.body.classList.toggle('nb-on', on);
+  if (on) document.documentElement.style.setProperty('--nb-h', bar.offsetHeight + 'px');
+}
+
+function ndRenderDrawer() {
+  const list = document.getElementById('ndList');
+  document.getElementById('ndCnt').textContent = String(ndState.items.length);
+  if (!ndState.items.length) {
+    list.innerHTML = '<div class="nd-empty">暂无消息<br>后台发布后会出现在这里</div>';
+    return;
+  }
+  list.innerHTML = ndState.items.map(n => {
+    const fresh = ndState.fresh.includes(n.id);
+    const title = n.title || (n.body || '').split('\n')[0] || '（无标题）';
+    return '<div class="nd-item lv-' + ndLv(n.level) + (fresh ? ' fresh' : '') + '">'
+      + '<button class="del" title="本机关闭这条" onclick="ndDismiss(\'' + n.id + '\')">✕</button>'
+      + '<div class="tt">' + esc(title) + (fresh ? '<span class="newtag">新</span>' : '') + '</div>'
+      + '<div class="tm">' + esc(ndTime(n.updatedAt || n.createdAt)) + (n.author ? ' · ' + esc(n.author) : '') + '</div>'
+      + (n.body ? '<div class="bd">' + esc(n.body) + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+/** 打开抽屉（auto = 自动弹出，不算「用户主动点击」） */
+function ndOpen(auto) {
+  ndState.fresh = ndUnread(ndState.items).map(n => n.id);
+  ndState.open = true;
+  document.getElementById('nbMask').classList.add('on');
+  document.getElementById('nbDrawer').classList.add('on');
+  ndRenderDrawer();
+  // 打开即视为已读：角标清零，但本次新到的条目仍带「新」标记
+  const seen = ndMap(ND_SEEN);
+  ndState.items.forEach(n => { seen[ndKey(n)] = 1; });
+  ndPut(ND_SEEN, seen);
+  ndRenderBell();
+  if (!auto) sessionStorage.setItem(ND_AUTO, '1');
+}
+
+function ndClose() {
+  ndState.open = false;
+  document.getElementById('nbMask').classList.remove('on');
+  document.getElementById('nbDrawer').classList.remove('on');
+}
+
+/** 本机关闭某条：不再出现在横幅与列表里（不影响别人，也不删后台数据） */
+function ndDismiss(id) {
+  const hit = ndState.items.find(n => n.id === id);
+  if (!hit) return;
+  const hidden = ndMap(ND_HIDDEN);
+  hidden[ndKey(hit)] = 1;
+  ndPut(ND_HIDDEN, hidden);
+  ndState.items = ndState.items.filter(n => n.id !== id);
+  ndState.fresh = ndState.fresh.filter(x => x !== id);
+  ndRenderBar();
+  ndRenderDrawer();
+  ndRenderBell();
+}
+
+function ndReadAll() {
+  const seen = ndMap(ND_SEEN);
+  ndState.items.forEach(n => { seen[ndKey(n)] = 1; });
+  ndPut(ND_SEEN, seen);
+  ndState.fresh = [];
+  ndRenderDrawer();
+  ndRenderBell();
+}
+
+document.getElementById('nbBarX').onclick = () => {
+  const id = document.getElementById('nbBar').getAttribute('data-id');
+  if (id) ndDismiss(id);
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ndState.open) ndClose(); });
+// 回到本页时若距上次检查超过 30 秒就补一次，切走再切回来不会看到过期消息
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - ndState.at > 30000) ndLoad();
+});
+window.addEventListener('resize', () => { if (document.getElementById('nbBar').classList.contains('on')) ndSyncBar(); });
+
+ndLoad();
+ndState.timer = setInterval(ndLoad, 60000);
+
+// 深链接：#dz / #gf / #lx 直接落到对应页；#dz/cmp 还能直接切到物价的某个视图
+// （收藏夹、群里发链接、截图核对都省一次点击）
+function applyHash() {
+  const raw = (location.hash || '').replace(/^#/, '').trim();
+  if (!raw) return;
+  const [tab, sub] = raw.split('/');
+  if (!['single', 'batch', 'lib', 'lx', 'dz', 'gf'].includes(tab)) return;
+  switchTab(tab);
+  if (tab === 'dz' && ['live', 'cancel', 'legacy', 'cmp'].includes(sub)) dzView(sub);
+}
+
+// ==========================================================================
+// 病理开具指引（桌面端 GuidePanel 的网页版，同一份 data/zhijian.json）
+// —— 表里不放钱：蜡块数 / 计价类型 / 价格档 一变就回后端重算，两端金额不可能出现差异。
+// ==========================================================================
+const zgState = { sys: '全部', key: '', data: null, rulesOpen: false, specOpen: false, autoPick: true, level: '2', tool: '', metaDone: false };
+
+function zgEl(id) { return document.getElementById(id); }
+
+function zgOpen(tool) {
+  zgEl('zgMask').classList.add('on');
+  zgEl('zgBox').classList.add('on');
+  document.body.classList.add('zg-on');
+  zgState.autoPick = true;
+  zgShowTool(tool || '');
+}
+
+/** 工具卡副标题：只在第一次进工具栏时取一次档位总数（不跟着检索条件变） */
+async function zgMeta() {
+  if (zgState.metaDone) return;
+  zgState.metaDone = true;
+  try {
+    const d = await fetch('/api/zhijian?wax=1&level=2').then((r) => r.json());
+    if (d && !d.error) {
+      zgEl('zgToolSub').textContent =
+        `${(d.systems || []).length} 个系统 · ${d.total} 条标本档位 · 德州二级/三级收费`;
+    }
+    const w = await fetch('/api/wuhao').then((r) => r.json());
+    if (w && !w.error && zgEl('zwToolSub')) {
+      zgEl('zwToolSub').textContent =
+        `${w.total} 条基本物耗 · ${(w.edges || []).length} 条边界判断 · ${w.meta.cats} 类条款`;
+    }
+  } catch { /* 取不到就留默认文案 */ }
+}
+
+/** 抽屉里切层：'' = 工具列表；'pathology' = 病理开具指引（以后加工具在这里补一个 id） */
+function zgShowTool(id) {
+  zgState.tool = id || '';
+  zgEl('zgHome').classList.toggle('hidden', !!id);
+  zgEl('zgGuide').classList.toggle('hidden', id !== 'pathology');
+  zgEl('zgWuhao').classList.toggle('hidden', id !== 'wuhao');
+  if (!id) { zgMeta(); return; }
+  if (id === 'wuhao') { zwBoot(); return; }
+  zgLoad();
+  setTimeout(() => { const q = zgEl('zgQ'); if (q) q.focus(); }, 60);
+}
+
+function zgClose() {
+  zgEl('zgMask').classList.remove('on');
+  zgEl('zgBox').classList.remove('on');
+  document.body.classList.remove('zg-on');
+}
+
+function zgNum(id, dflt) {
+  const el = zgEl(id);
+  if (!el) return dflt;
+  const v = parseInt((el.value || '').toString().trim(), 10);
+  return Number.isFinite(v) ? v : dflt;
+}
+
+function zgKey(r) { return r.system + '|' + r.tier + '|' + r.sample; }
+
+/** 价格档：二级 / 三级整表切换（金额一律回后端重算） */
+function zgLevel(v) {
+  zgState.level = v;
+  zgEl('zgLv2').classList.toggle('on', v === '2');
+  zgEl('zgLv3').classList.toggle('on', v === '3');
+  zgLoad();
+}
+
+async function zgLoad() {
+  const wax = Math.max(0, Math.min(60, zgNum('zgWaxN', 0)));
+  const params = new URLSearchParams({
+    q: zgEl('zgQ').value.trim(),
+    kind: zgEl('zgKind').value,
+    system: zgState.sys === '全部' ? '' : zgState.sys,
+    wax: String(wax),
+    mode: zgEl('zgMode').value,
+    level: zgState.level,
+  });
+
+  let d;
+  try {
+    d = await fetch('/api/zhijian?' + params.toString()).then((r) => r.json());
+  } catch { return; }
+  if (!d || d.error) return;
+  zgState.data = d;
+
+  zgPaintHead();
+  zgPaintSys();
+  zgPaintRows();
+
+  // 首次打开：按首条的典型档位预填，别让医生自己去猜该填几块
+  if (zgState.autoPick && d.rows.length) {
+    zgState.autoPick = false;
+    const first = d.rows[0];
+    zgState.key = zgKey(first);
+    if (wax !== first.wax || zgEl('zgMode').value !== first.kind) {
+      zgEl('zgWaxN').value = first.wax;
+      zgEl('zgMode').value = first.kind;
+      return zgLoad();
+    }
+  }
+  zgPaintSide();
+}
+
+function zgPaintHead() {
+  const d = zgState.data;
+  if (!d || !d.meta) return;
+  zgEl('zgTitle').textContent = d.meta.title || '病理开具指引';
+  const lv = d.level || {};
+  zgEl('zgSub').textContent = `${d.meta.sub || ''} · ${d.meta.count || 0} 条 · ${lv.name || ''}价` +
+    `（诊断 ${lv.diag} / 处理 ${lv.proc} / 染色 ${lv.stainCut}·${lv.stain}）`;
+  zgEl('zgSrc').textContent = d.meta.source ? `来源：${d.meta.source}` : '';
+  zgEl('zgRules').textContent = (d.rules || []).map((r, i) => `（${i + 1}）${r}`).join('\n');
+
+  zgEl('zgSpec').innerHTML = (d.special || []).map((s) => `
+      <div><b>${esc(s.title)}</b>${(s.lines || []).map((l) => `<div>· ${esc(l)}</div>`).join('')}
+      ${s.note ? `<div style="color:var(--faint)">${esc(s.note)}</div>` : ''}</div>`).join('');
+}
+
+function zgPaintSys() {
+  const d = zgState.data;
+  if (!d) return;
+  const all = [{ name: '全部', count: d.total }].concat(d.systems || []);
+  zgEl('zgSys').innerHTML = all.map((s) => `
+      <div class="zg-sysitem${s.name === zgState.sys ? ' on' : ''}" onclick="zgPickSys('${esc(s.name).replace(/'/g, '&#39;')}')">
+        <span title="${esc(s.name)}">${esc(s.name)}</span><span class="n">${s.count}</span>
+      </div>`).join('');
+}
+
+function zgPickSys(name) {
+  zgState.sys = name;
+  zgState.key = '';
+  zgState.autoPick = true;
+  zgLoad();
+}
+
+function zgPaintRows() {
+  const d = zgState.data;
+  if (!d) return;
+  const rows = d.rows || [];
+  if (!rows.length) {
+    zgEl('zgRows').innerHTML = '<div class="zg-empty">没有匹配的条目，换个关键词试试（如：宫颈 / ESD / 甲状腺）</div>';
+  } else {
+    zgEl('zgRows').innerHTML = rows.map((r) => `
+      <div class="zg-tr${zgKey(r) === zgState.key ? ' on' : ''}"
+           onclick="zgPickRow('${esc(zgKey(r)).replace(/'/g, '&#39;')}')"
+           ondblclick="zgCopy('${esc(zgKey(r)).replace(/'/g, '&#39;')}')">
+        <span class="tier">${esc(r.tier)}</span>
+        <span class="smp">${esc(r.sample)}</span>
+      </div>`).join('');
+  }
+  zgEl('zgStat').textContent = rows.length === d.total ? `共 ${rows.length} 条 · 双击复制` : `${rows.length} / ${d.total} 条`;
+}
+
+/** 双击复制成一行，直接粘进病历 / 申请单（桌面端双击走剪贴板，这里是同一个文案） */
+function zgCopy(key) {
+  const row = zgRowsNow().find((r) => zgKey(r) === key);
+  if (!row) return;
+  const text = `${row.tier}｜${row.sample}`;
+  const done = () => toast('已复制：' + text);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => done());
+  } else { done(); }
+}
+
+function zgRowsNow() {
+  return (zgState.data && zgState.data.rows) || [];
+}
+
+function zgPickRow(key) {
+  const row = zgRowsNow().find((r) => zgKey(r) === key);
+  if (!row) return;
+  zgState.key = key;
+  zgEl('zgWaxN').value = row.wax;
+  zgEl('zgMode').value = row.kind;
+  zgLoad();
+}
+
+function zgPaintSide() {
+  const d = zgState.data;
+  if (!d) return;
+  const rows = zgRowsNow();
+  const pick = rows.find((r) => zgKey(r) === zgState.key) || rows[0];
+  if (pick) {
+    if (!zgState.key) zgState.key = zgKey(pick);
+    zgEl('zgPick').textContent = `${pick.system} · ${pick.tier}`;
+    zgEl('zgPickS').textContent = pick.sample;
+  } else {
+    zgEl('zgPick').textContent = '没有匹配的条目';
+    zgEl('zgPickS').textContent = '';
+  }
+
+  const mode = zgEl('zgMode').value;
+  zgEl('zgCntLabel').textContent = (mode === '细胞' || mode === 'TCT') ? '涂片数' : '蜡块数';
+
+  const q = d.quote || { total: 0, lines: [] };
+  zgEl('zgTotal').textContent = '¥' + fmtMoney(q.total);
+  zgEl('zgLines').innerHTML = (q.lines || []).map((l) => `
+      <div class="zg-line">
+        <span><span class="nm">${esc(l.name)}</span>${l.note ? `<span class="nt">${esc(l.note)}</span>` : ''}</span>
+        <span class="qt">${l.qty === 1 ? '×1' : `×${l.qty} · ${l.unit}`}</span>
+        <span class="am">¥${fmtMoney(l.amount)}</span>
+      </div>`).join('');
+
+  const k = d.quick || {};
+  zgEl('zgQuickTxt').textContent = k.wax > 0 ? `≈ ${k.wax} 个蜡块` : '按说明里的四个案例速填';
+}
+
+function fmtMoney(v) {
+  const n = Number(v) || 0;
+  return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+}
+
+function zgStep(delta) {
+  const cur = zgNum('zgWaxN', 0);
+  zgEl('zgWaxN').value = Math.max(0, Math.min(60, cur + delta));
+  zgLoad();
+}
+
+/** 速算：把说明里四个案例直接算成蜡块数（bags,pieces,size 交给后端算，前端不复制规则） */
+async function zgApplyQuick(v) {
+  if (!v) return;
+  const [bags, pieces, size] = v.split(',').map(Number);
+  let d;
+  try {
+    d = await fetch('/api/zhijian?' + new URLSearchParams({
+      bags: String(bags), pieces: String(pieces), size: String(size), wax: '0', level: zgState.level,
+    }).toString()).then((r) => r.json());
+  } catch { return; }
+  if (!d || !d.quick || !(d.quick.wax > 0)) return;
+  zgEl('zgWaxN').value = d.quick.wax;
+  zgLoad();
+}
+
+function zgRules() {
+  zgState.rulesOpen = !zgState.rulesOpen;
+  if (zgState.specOpen) { zgState.specOpen = false; zgEl('zgSpec').classList.add('hidden'); zgEl('zgSpecBtn').textContent = '专项价目 ▾'; }
+  zgEl('zgRules').classList.toggle('hidden', !zgState.rulesOpen);
+  zgEl('zgRulesBtn').textContent = zgState.rulesOpen ? '蜡块核定规则 ▴' : '蜡块核定规则 ▾';
+}
+
+function zgSpec() {
+  zgState.specOpen = !zgState.specOpen;
+  if (zgState.rulesOpen) { zgState.rulesOpen = false; zgEl('zgRules').classList.add('hidden'); zgEl('zgRulesBtn').textContent = '蜡块核定规则 ▾'; }
+  zgEl('zgSpec').classList.toggle('hidden', !zgState.specOpen);
+  zgEl('zgSpecBtn').textContent = zgState.specOpen ? '专项价目 ▴' : '专项价目 ▾';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && zgEl('zgBox').classList.contains('on')) { zgClose(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G')) {
+    e.preventDefault();
+    if (zgEl('zgBox').classList.contains('on')) zgClose(); else zgOpen('pathology');
+  }
+});
+
+applyHash();
+window.addEventListener('hashchange', applyHash);
+</script>
+
+
+<!-- ========== 工具栏（右侧竖排标签 + 抽屉） ==========
+     不进导航：开病理申请单时随手查——按病历系统找标本、按蜡块估价格。
+     抽屉两层：#zgHome 工具列表（病理 + 预留位）/ #zgGuide 病理本体，
+     以后新增工具 = 加一张卡 + 加一层 .zg-view，导航与快捷键都不用动。 -->
+<button class="zg-tab" id="zgTab" onclick="zgOpen()" title="工具栏（Ctrl+G 直接查病理）">工具栏</button>
+
+<div id="zgMask" onclick="zgClose()"></div>
+<div id="zgBox">
+  <!-- ① 工具列表：病理 + 基本物耗 + 两个预留位（以后加工具就换掉一格） -->
+  <div class="zg-view" id="zgHome">
+    <div class="zg-head">
+      <div class="zg-logo">工</div>
+      <div>
+        <b>工具栏</b>
+        <small>开单速查 · 计价小工具</small>
+      </div>
+      <div class="zg-sp"></div>
+      <button class="zg-x" onclick="zgClose()" title="收起（Esc）">✕</button>
+    </div>
+
+    <div class="zg-home">
+      <div class="zg-sec">工具</div>
+      <div class="zg-cards">
+        <button class="zg-tool" onclick="zgShowTool('pathology')">
+          <span class="ic">病</span>
+          <span><b>病理开具指引</b><small id="zgToolSub">按标本算蜡块 · 按蜡块算钱</small></span>
+          <span class="go">›</span>
+        </button>
+        <button class="zg-tool" onclick="zgShowTool('wuhao')">
+          <span class="ic" style="background:#d97706">耗</span>
+          <span><b>基本物耗指引</b><small id="zwToolSub">哪些含在项目价内不能收 · 哪些可零差率另收</small></span>
+          <span class="go">›</span>
+        </button>
+        <div class="zg-slot"><b>预留工具位</b>后续工具加在这里</div>
+        <div class="zg-slot"><b>预留工具位</b>后续工具加在这里</div>
+      </div>
+      <div class="zg-hint">工具栏只放开单时的速查 / 计价小工具，不占顶部导航；新增工具加进这一栏，不影响已在用的病理开具指引。</div>
+    </div>
+  </div>
+
+  <!-- ② 病理开具指引 -->
+  <div class="zg-view hidden" id="zgGuide">
+  <div class="zg-head">
+    <button class="zg-back" onclick="zgShowTool('')" title="返回工具栏">‹</button>
+    <div class="zg-logo">病</div>
+    <div>
+      <b id="zgTitle">病理开具指引</b>
+      <small id="zgSub">按标本算蜡块 · 按蜡块算价格</small>
+    </div>
+    <div class="zg-sp"></div>
+    <div class="zg-lv">
+      <span>价格档</span>
+      <button id="zgLv2" class="on" onclick="zgLevel('2')">二级</button>
+      <button id="zgLv3" onclick="zgLevel('3')">三级</button>
+    </div>
+    <button class="zg-x" onclick="zgClose()" title="收起（Esc）">✕</button>
+  </div>
+
+  <div class="zg-bar">
+    <input id="zgQ" placeholder="搜疾病 / 标本 / 部位，如：宫颈、ESD、甲状腺" oninput="zgLoad()">
+    <select id="zgKind" onchange="zgLoad()">
+      <option value="">全部档位</option>
+      <option value="常规">常规</option>
+      <option value="复杂">复杂</option>
+    </select>
+    <span class="zg-stat" id="zgStat"></span>
+  </div>
+
+  <div class="zg-body">
+    <div class="zg-sys">
+      <div class="zg-h">疾病系统</div>
+      <div class="zg-syslist" id="zgSys"></div>
+    </div>
+
+    <div class="zg-tbl">
+      <div class="zg-th"><span>档位</span><span>标本 / 适应证</span></div>
+      <div class="zg-rows" id="zgRows"></div>
+    </div>
+  </div>
+
+  <div class="zg-quote">
+    <div>
+      <div class="zg-pick" id="zgPick">在上表选一条，或直接改蜡块数</div>
+      <div class="zg-picks" id="zgPickS"></div>
+      <div class="zg-lines" id="zgLines"></div>
+    </div>
+
+    <div class="zg-card">
+      <div class="zg-row">
+        <span class="zg-h">计价类型</span>
+        <select id="zgMode" onchange="zgLoad()">
+          <option value="常规">常规组织病理</option>
+          <option value="复杂">复杂组织病理</option>
+          <option value="细胞">细胞病理·按涂片</option>
+          <option value="TCT">TCT·仅诊断+处理</option>
+        </select>
+      </div>
+      <div class="zg-row">
+        <span class="zg-h" id="zgCntLabel">蜡块数</span>
+        <span class="zg-step">
+          <button onclick="zgStep(-1)" title="减 1">−</button>
+          <input id="zgWaxN" value="1" onchange="zgLoad()">
+          <button onclick="zgStep(1)" title="加 1">+</button>
+        </span>
+      </div>
+      <div class="zg-total"><span>合计</span><b id="zgTotal">¥0</b></div>
+      <div class="zg-row" style="margin-top:9px">
+        <span class="zg-note" id="zgQuickTxt" style="font-size:10.5px;color:var(--muted)">按说明四个案例速填</span>
+      </div>
+      <div class="zg-row" style="margin-top:4px">
+        <select id="zgQuickSel" style="margin-left:0;width:100%" onchange="zgApplyQuick(this.value)">
+          <option value="">速算蜡块…</option>
+          <option value="1,1,2">1 袋 1 块 → 1 个</option>
+          <option value="4,1,2">4 个点位 4 袋 → 4 个</option>
+          <option value="1,5,2">2 袋共 7 块（5+2）→ 3 个</option>
+          <option value="1,1,9">1 袋 9cm 肿物 → 8 个</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="zg-foot">
+    <button onclick="zgRules()" id="zgRulesBtn">蜡块核定规则 ▾</button>
+    <button onclick="zgSpec()" id="zgSpecBtn">专项价目 ▾</button>
+    <span class="zg-sp"></span>
+    <span id="zgSrc"></span>
+    <div class="rules hidden" id="zgRules"></div>
+    <div class="spec hidden" id="zgSpec"></div>
+  </div>
+  </div>
+
+  <!-- ③ 基本物耗指引：判定 / 不可收费 / 可收费 / 口径依据 -->
+  <div class="zg-view hidden" id="zgWuhao">
+    <div class="zg-head">
+      <button class="zg-back" onclick="zgShowTool('')" title="返回工具栏">‹</button>
+      <div class="zg-logo" style="background:#d97706">耗</div>
+      <div>
+        <b>基本物耗指引</b>
+        <small id="zwSub">哪些含在项目价内 · 哪些可零差率另收</small>
+      </div>
+      <div class="zg-sp"></div>
+      <button class="zg-x" onclick="zgClose()" title="收起（Esc）">✕</button>
+    </div>
+
+    <div class="zgw-tabs">
+      <button class="zgw-tab on" data-t="judge" onclick="zwTab('judge')">判定</button>
+      <button class="zgw-tab" data-t="basic" onclick="zwTab('basic')">不可收费 <span id="zwCntBasic"></span></button>
+      <button class="zgw-tab" data-t="charge" onclick="zwTab('charge')">可收费 <span id="zwCntCharge"></span></button>
+      <button class="zgw-tab" data-t="rule" onclick="zwTab('rule')">口径依据</button>
+    </div>
+
+    <div class="zg-view" id="zwJudge">
+      <div class="zgw-bar">
+        <input id="zwQ" placeholder="输入耗材名称，如：纱布、一次性输液器、钢板、耦合剂" oninput="zwAskDelay()">
+        <div class="zgw-chips">
+          <span class="zgw-chip-h">常用</span>
+          <button class="zgw-chip" onclick="zwAsk('纱布')">纱布</button>
+          <button class="zgw-chip" onclick="zwAsk('一次性输液器')">输液器</button>
+          <button class="zgw-chip" onclick="zwAsk('钢板')">钢板</button>
+          <button class="zgw-chip" onclick="zwAsk('耦合剂')">耦合剂</button>
+          <button class="zgw-chip" onclick="zwAsk('留置针')">留置针</button>
+          <button class="zgw-chip" onclick="zwAsk('玻片')">玻片</button>
+          <button class="zgw-chip" onclick="zwAsk('免疫组化抗体')">免疫组化试剂</button>
+        </div>
+      </div>
+      <div class="zgw-scroll">
+        <div class="zgw-card miss" id="zwCard">
+          <div class="hd"><span class="bdg" id="zwBadge">清单外</span><h3 id="zwHead">输入耗材名称开始判定</h3></div>
+          <p id="zwBasis">例：纱布、一次性输液器、钢板、耦合剂、留置针</p>
+          <p class="hint" id="zwNote"></p>
+          <div class="zgw-near hidden" id="zwNear"><b>清单里的相近条目</b><div id="zwNearList"></div></div>
+        </div>
+        <p class="zgw-tip">三步判定：① 在本科室项目所属类别的「基本物耗」清单里 → 不能收；② 不在 → 看原项目「除外内容」；③ 还没答案 → 查省/市「可另收费一次性材料目录」与本院耗材编码。</p>
+      </div>
+    </div>
+
+    <div class="zg-view hidden" id="zwBasic">
+      <div class="zgw-bar2">
+        <input id="zwBQ" placeholder="在清单里搜：纱布、棉签、试剂…" oninput="zwRenderItems()">
+        <span class="zgw-stat" id="zwBStat"></span>
+      </div>
+      <div class="zgw-body">
+        <div class="zgw-groups">
+          <div class="zg-h">归类</div>
+          <div class="zgw-glist" id="zwGroups"></div>
+        </div>
+        <div class="zgw-tbl">
+          <div class="zgw-th"><span>耗材</span><span>覆盖</span><span>说明</span></div>
+          <div class="zgw-rows" id="zwItems"></div>
+        </div>
+      </div>
+      <div class="zgw-foot"><b id="zwPickName">选一条看依据</b><p id="zwPickBasis"></p></div>
+    </div>
+
+    <div class="zg-view hidden" id="zwCharge">
+      <div class="zgw-banner">
+        25 号文第一条：除「使用说明」中纳入基本物耗的一次性耗材外，映射原价格项目的除外内容与现行可另收费的一次性材料目录继续执行。<br>
+        各类指南：除基本物耗以外的其他耗材，按照实际采购价格零差率销售。
+      </div>
+      <div class="zgw-bar2">
+        <select id="zwESel" onchange="zwRenderEdges()" style="padding:5px 8px;font-size:12px;border-radius:7px;font-family:inherit;border:1px solid var(--border-strong);background:var(--input-bg);color:var(--text)">
+          <option value="全部">全部结论</option>
+          <option value="可另收">只看可另收</option>
+          <option value="可另收（减收）">只看可另收·需减收</option>
+          <option value="不可另收">只看不可另收</option>
+          <option value="需核对">只看需核对</option>
+        </select>
+        <span class="zgw-stat" id="zwEStat"></span>
+      </div>
+      <div class="zgw-tbl c4" style="margin:10px 16px">
+        <div class="zgw-th"><span>耗材 / 场景</span><span>类别</span><span>结论</span><span>依据 / 提示</span></div>
+        <div class="zgw-rows" id="zwEdges"></div>
+      </div>
+    </div>
+
+    <div class="zgw-scroll hidden" id="zwRule">
+      <div class="zg-sec">判断口径</div>
+      <div id="zwRules"></div>
+      <div class="zg-sec" id="zwSrcSec" style="margin-top:14px">指南条款原文</div>
+      <div id="zwSources"></div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- 病种库右键菜单（条目由 pubCtx 按当前区段的列动态生成） -->
+<div id="ctxMenu" class="ctx-menu hidden"></div>
+<div id="toast" class="toast hidden"></div>
+</body>
+</html>

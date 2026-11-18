@@ -1,0 +1,226 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.Admin.AdminSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="2,0,0,14">
+      <TextBlock Style="{StaticResource PageTitle}" Text="系统设置" VerticalAlignment="Center" />
+      <TextBlock x:Name="TxtTip" Style="{StaticResource Desc}" VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 Text="软件名称 / 界面主题 / 后台登录 / 立项指南参数 —— 保存后立即生效" />
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+
+        <!-- ============ 卡 1：基本设置 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="基本设置" />
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="92" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+
+              <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Label}" Text="软件名称" />
+              <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                <TextBox x:Name="TxtAppName" Style="{StaticResource Tb}" Width="300"
+                         MaxLength="40" />
+                <TextBlock Style="{StaticResource Desc}" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Text="显示在窗口标题、启动页与后台侧栏" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="单位 / 副名" Margin="0,12,0,0" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                <TextBox x:Name="TxtSubName" Style="{StaticResource Tb}" Width="300"
+                         MaxLength="40" />
+                <TextBlock Style="{StaticResource Desc}" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Text="可空；填了会显示在软件名称下方" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Style="{StaticResource Label}" Text="界面主题" Margin="0,18,0,0" />
+            <ItemsControl x:Name="ThemeHost" Margin="0,10,0,0">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource ThemeSwatch}"
+                          Tag="{Binding Id}" MouseLeftButtonUp="OnPickTheme">
+                    <StackPanel>
+                      <Border Height="52" CornerRadius="8" BorderThickness="1"
+                              BorderBrush="{DynamicResource B.Border}">
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="0.7*" />
+                          </Grid.ColumnDefinitions>
+                          <Border Grid.Column="0" CornerRadius="7,0,0,7" Background="{Binding BgBrush}" />
+                          <Border Grid.Column="1" Background="{Binding CardBrush}" />
+                          <Border Grid.Column="2" CornerRadius="0,7,7,0" Background="{Binding AccentBrush}" />
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                 Margin="0,9,0,0" HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource B.Text}" />
+                      <TextBlock Text="{Binding Hint}" FontSize="11" Margin="0,2,0,0"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource B.Muted}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+              <Button x:Name="BtnSaveBasic" Style="{StaticResource Btn.Primary}" Content="保存设置"
+                      Click="OnSaveBasic" />
+              <Button x:Name="BtnRevertBasic" Style="{StaticResource Btn.Ghost}" Content="恢复默认名称"
+                      Margin="8,0,0,0" Click="OnRevertName" />
+              <TextBlock x:Name="TxtBasicStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 2：窗口与托盘 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="窗口与托盘" />
+
+            <CheckBox x:Name="ChkAsk" Style="{StaticResource Cbx}" VerticalAlignment="Center"
+                      Checked="OnToggleAsk" Unchecked="OnToggleAsk"
+                      Content="点关闭按钮时先问我：最小化到托盘，还是退出程序" />
+            <TextBlock Style="{StaticResource Desc}" Margin="22,8,0,0" TextWrapping="Wrap"
+                       Text="弹窗里勾了「记住我的选择」后就不再询问，直接按所选方式执行（上面这项会自动取消勾选）；不勾则只对本次生效。" />
+
+            <CheckBox x:Name="ChkTray" Style="{StaticResource Cbx}" VerticalAlignment="Center"
+                      Margin="0,14,0,0" Checked="OnToggleTray" Unchecked="OnToggleTray"
+                      Content="不问时，点关闭直接最小化到系统托盘（不退出程序）" />
+            <TextBlock Style="{StaticResource Desc}" Margin="22,8,0,0" TextWrapping="Wrap"
+                       Text="收进托盘 = 程序继续运行、通知公告照常接收，双击托盘图标唤回；取消勾选 = 点关闭直接结束程序。托盘图标右键菜单里的「关闭时最小化到托盘」是同一开关，勾选它等同于做出了选择（不再询问）。" />
+
+            <TextBlock x:Name="TxtTrayStatus" Style="{StaticResource Desc}" Margin="22,10,0,0"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 3：账号安全 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="后台登录" />
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="92" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+
+              <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Label}" Text="登录校验" />
+              <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                <CheckBox x:Name="ChkLogin" Style="{StaticResource Cbx}"
+                          Content="打开「后台管理」前需要登录" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="登录账号" Margin="0,14,0,0" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,14,0,0">
+                <TextBox x:Name="TxtAdminUser" Style="{StaticResource Tb}" Width="220" MaxLength="32" />
+                <TextBlock Style="{StaticResource Desc}" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Text="默认 admin；不区分大小写" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="新密码" Margin="0,12,0,0" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                <PasswordBox x:Name="TxtNewPass" Style="{StaticResource Pwb}" Width="220" />
+                <TextBlock Style="{StaticResource Desc}" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Text="留空表示不改动；至少 6 位" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource Label}"
+                         Text="确认密码" Margin="0,12,0,0" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                <PasswordBox x:Name="TxtNewPass2" Style="{StaticResource Pwb}" Width="220" />
+              </StackPanel>
+            </Grid>
+
+            <Border Margin="0,16,0,0" Padding="12,10" CornerRadius="10" BorderThickness="1"
+                    Background="{DynamicResource B.InfoBg}"
+                    BorderBrush="{DynamicResource B.InfoBorder}">
+              <TextBlock x:Name="TxtPassHint" FontSize="12" TextWrapping="Wrap" LineHeight="19"
+                         Foreground="{DynamicResource B.InfoText}" />
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+              <Button x:Name="BtnSaveAccount" Style="{StaticResource Btn.Primary}" Content="保存登录设置"
+                      Click="OnSaveAccount" />
+              <TextBlock x:Name="TxtAccountStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 4：立项指南参数 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,14,0,0">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="立项指南参数" />
+            <TextBlock Style="{StaticResource Desc}" Text="「项目类别」「计价单位」下拉检索候选，每行一个。留空的项自动取现有数据去重值；类别还会带上全部区段名。两者都只是候选，编辑框里可自由输入，新增类别/单位不需要改代码。"
+                       Margin="0,-2,0,10" />
+
+            <TextBlock Style="{StaticResource Label}" Text="项目类别" />
+            <TextBox x:Name="TxtCategories" Style="{StaticResource Tb.Multi}" Height="96"
+                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+
+            <TextBlock Style="{StaticResource Label}" Text="计价单位" Margin="0,12,0,0" />
+            <TextBox x:Name="TxtUnits" Style="{StaticResource Tb.Multi}" Height="120"
+                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button Style="{StaticResource Btn.Primary}" Content="保存参数" Click="OnSaveParams" />
+              <Button Style="{StaticResource Btn.Ghost}" Content="从现有数据提取" Margin="8,0,0,0"
+                      Click="OnExtractParams" ToolTip="清空当前候选并重新取自立项指南全部区段数据" />
+              <TextBlock x:Name="TxtParamStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ============ 卡 5：配置文件 ============ -->
+        <Border Style="{StaticResource Card}" Padding="18,14" Margin="0,14,0,14">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SecTitle}" Text="配置文件" Margin="0,0,0,8" />
+            <TextBlock x:Name="TxtSettingsPath" FontSize="12" TextWrapping="Wrap"
+                       Foreground="{DynamicResource B.Muted}" />
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button Style="{StaticResource Btn.Ghost}" Content="打开所在目录" Click="OnOpenFolder" />
+              <Button Style="{StaticResource Btn.Ghost}" Content="重新读取" Margin="8,0,0,0"
+                      Click="OnReloadSettings" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

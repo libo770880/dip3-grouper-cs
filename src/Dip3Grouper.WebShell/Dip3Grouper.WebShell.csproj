@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Web 端的「软件版」壳：绿色包里普通用户双击的就是它。
+      没有控制台黑框，起服务后自动开浏览器，关窗口最小化到托盘，托盘菜单退出才真停服务。
+      命令行版 Dip3Grouper.Web.exe 仍在同一目录，留给运维做 Windows 服务 / 计划任务。
+    -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!--
+      同 Desktop：Core 里有 public class Dip3Grouper，命名空间首段与类型同名会让
+      代码生成/全限定名解析走到类型上，故根命名空间换前缀，程序集名保持不变。
+    -->
+    <RootNamespace>Dip3GrouperApp.Shell</RootNamespace>
+    <AssemblyName>Dip3Grouper.WebShell</AssemblyName>
+    <ApplicationIcon>..\Dip3Grouper.Desktop\Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <Version>1.5.0</Version>
+    <!--
+      WFAC010 会劝我们把 app.manifest 里的 dpiAware/dpiAwareness 删掉、改用
+      ApplicationHighDpiMode 项目属性。但属性生成的是 ApplicationConfiguration.Initialize()，
+      而本项目是显式 Main（要先建 Mutex、判端口），由 Main 里调 SetHighDpiMode 更可控；
+      清单同时声明只会在两者取值不一致时有歧义，这里统一为 PerMonitorV2，按已知噪音屏蔽。
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 壳自己起 Kestrel（单进程），需要 ASP.NET Core 的编译期引用 -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dip3Grouper.Web\Dip3Grouper.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 窗口图标、托盘图标、exe 图标用桌面端同一份 app.ico，避免两套视觉 -->
+    <EmbeddedResource Include="..\Dip3Grouper.Desktop\Assets\app.ico" LogicalName="app.ico" />
+  </ItemGroup>
+
+  <!--
+    绿色包里同时留两个入口，发布脚本按「先命令行版、后软件壳」的顺序产出：
+      Dip3Grouper.WebShell.exe  普通用户双击（无黑框 + 托盘 + 面板）
+      Dip3Grouper.Web.exe       运维用（Win 服务 / 计划任务 / 需要看控制台日志）
+    两者共用同一份 dll 与 data\config\web，只是宿主不同。
+  -->
+
+</Project>

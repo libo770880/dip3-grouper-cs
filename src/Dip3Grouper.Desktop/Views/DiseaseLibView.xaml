@@ -1,0 +1,124 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.DiseaseLibView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Dip3GrouperApp.Desktop">
+  <!-- 统一节奏：外层左右 20 / 上下 14，内容占满窗口 -->
+  <Grid Margin="20,14,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,10">
+      <TextBlock Style="{StaticResource PageTitle}" Text="病种库查询" />
+      <TextBlock Style="{StaticResource Desc}" Margin="12,0,0,3" VerticalAlignment="Bottom"
+                 Text="浏览 DIP 3.0 病种库全部区段，支持按编码 / 名称 / 拼音等任意字段检索" />
+    </StackPanel>
+
+    <!-- 区段胶囊 -->
+    <WrapPanel Grid.Row="1" x:Name="TabsPanel" Margin="0,0,0,10" />
+
+    <!-- 工具条：检索框 + 动作 + 命中状态，收在一张卡里，和下方表格形成同一视觉组 -->
+    <Border Grid.Row="2" Margin="0,0,0,10" Padding="8"
+            Background="{DynamicResource B.Card}"
+            BorderBrush="{DynamicResource B.Border}" BorderThickness="1" CornerRadius="8">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 检索框：内嵌放大镜 + 空态占位文字（WPF 的 TextBox 没有原生 Watermark） -->
+        <Grid Grid.Row="0" Grid.Column="0" Width="420">
+          <TextBox x:Name="QueryBox" Style="{StaticResource Tb}" Padding="32,0,10,0"
+                   ToolTip="支持编码、中文名、拼音首字母，多个关键词用空格分隔"
+                   PreviewKeyDown="OnQueryKey" />
+
+          <Path Margin="11,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                IsHitTestVisible="False" Stretch="None"
+                Stroke="{DynamicResource B.Faint}" StrokeThickness="1.6"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+            <Path.Data>
+              <GeometryGroup>
+                <EllipseGeometry Center="6,6" RadiusX="4.4" RadiusY="4.4" />
+                <LineGeometry StartPoint="9.4,9.4" EndPoint="12.6,12.6" />
+              </GeometryGroup>
+            </Path.Data>
+          </Path>
+
+          <TextBlock Text="输入编码 / 名称 / 拼音检索" Margin="32,0,0,0"
+                     VerticalAlignment="Center" IsHitTestVisible="False"
+                     Foreground="{DynamicResource B.Faint}" FontSize="13">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=QueryBox}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+          <Button Style="{StaticResource Btn.Primary}" Content="查 询" MinWidth="76" Click="OnSearch" />
+          <Button Style="{StaticResource Btn.Ghost}" Content="清 空" Margin="8,0,0,0" Click="OnClear"
+                  ToolTip="清空关键词并恢复当前区段默认列表" />
+          <TextBlock x:Name="StatusText" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- 序号承接提示单独一行：文字较长，挤在按钮行会把查询框顶变形 -->
+        <TextBlock x:Name="SeqHint" Grid.Row="1" Grid.ColumnSpan="2" Margin="2,6,0,0"
+                   Style="{StaticResource Desc}" Visibility="Collapsed"
+                   Foreground="{DynamicResource B.InfoText}" TextWrapping="Wrap" />
+      </Grid>
+    </Border>
+
+    <!-- 表格卡：外框圆角 + 内表去边框，避免「框里还有一个框」的双层线 -->
+    <Border Grid.Row="3" Background="{DynamicResource B.Card}"
+            BorderBrush="{DynamicResource B.Border}" BorderThickness="1" CornerRadius="8"
+            ClipToBounds="True">
+      <!-- 右键：复制该单元格 / 本行 / 本行含列名 / 编码名称类单字段（菜单项按当前区段的列动态生成） -->
+      <DataGrid x:Name="Grid" Style="{StaticResource Dg.ReadOnly}"
+                BorderThickness="0"
+                RowHeight="{DynamicResource DgRowHeight}"
+                ColumnHeaderHeight="38"
+                local:RowMenu.Enable="True" />
+    </Border>
+
+    <!-- 分页：左状态 / 右翻页控件，比整体居中最省眼动 -->
+    <Border Grid.Row="4" Margin="0,10,0,0" Padding="0,8,0,0"
+            BorderBrush="{DynamicResource B.Border}" BorderThickness="0,1,0,0">
+      <Grid>
+        <TextBlock x:Name="PageInfo" Style="{StaticResource Desc}"
+                   VerticalAlignment="Center" HorizontalAlignment="Left" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <Button x:Name="BtnPrev" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+                  FontSize="12.5" Content="上一页" Click="OnPrev" />
+          <Button x:Name="BtnNext" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+                  FontSize="12.5" Content="下一页" Margin="6,0,0,0" Click="OnNext" />
+          <Border Width="1" Height="16" Background="{DynamicResource B.Border}" Margin="14,0" />
+          <TextBlock Text="跳至" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+          <TextBox x:Name="JumpBox" Width="50" Height="26" Margin="6,0,6,0" FontSize="12.5"
+                   Padding="6,3" VerticalContentAlignment="Center"
+                   PreviewKeyDown="OnJumpKey" ToolTip="输入页码后回车" />
+          <TextBlock Text="页" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="0,0,12,0" />
+          <TextBlock Text="每页" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+          <ComboBox x:Name="PageSizeSel" Width="74" Height="26" Margin="6,0,0,0" FontSize="12.5"
+                    SelectionChanged="OnPageSizeChanged" ToolTip="每页显示条数" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

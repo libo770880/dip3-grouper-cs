@@ -1,0 +1,149 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.Admin.AdminAuditView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="2,0,0,12">
+      <TextBlock Style="{StaticResource PageTitle}" Text="审计日志" VerticalAlignment="Center" />
+      <TextBlock Style="{StaticResource Desc}" VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 Text="记录后台的登录与写操作：谁、何时、改了什么、成功与否" />
+    </Grid>
+
+    <!-- ============ 统计 ============ -->
+    <Border Grid.Row="1" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,12">
+      <StackPanel>
+        <ItemsControl x:Name="StatChips">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Background="{DynamicResource B.SoftBg}" BorderBrush="{DynamicResource B.Border}"
+                      BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,8,8">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource B.Muted}" />
+                  <TextBlock Text="{Binding Value}" FontSize="12" FontWeight="Bold" Margin="7,0,0,0"
+                             Foreground="{DynamicResource B.Text}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <WrapPanel Margin="0,4,0,0">
+          <TextBox x:Name="TxtQuery" Style="{StaticResource Tb}" Width="220"
+                   ToolTip="在动作 / 对象 / 详情 / 账号 / 备注里模糊匹配" />
+          <TextBlock Text="动作" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="12,0,6,0" />
+          <ComboBox x:Name="ActionSel" Style="{StaticResource Cb}" Width="118"
+                    ToolTip="按动作类别筛选" />
+          <TextBlock Text="对象" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="10,0,6,0" />
+          <ComboBox x:Name="TargetSel" Style="{StaticResource Cb}" Width="128"
+                    ToolTip="按操作对象筛选" />
+          <CheckBox x:Name="ChkFailOnly" Style="{StaticResource Cbx}" Content="只看失败"
+                    Margin="12,0,0,0" VerticalAlignment="Center" />
+          <Button x:Name="BtnQuery" Style="{StaticResource Btn.Primary}" Content="查询" Height="29"
+                  Margin="12,0,0,0" Click="OnQuery" />
+          <Button x:Name="BtnReset" Style="{StaticResource Btn.Ghost}" Content="重置" Height="29"
+                  Margin="8,0,0,0" Click="OnReset" />
+          <Button x:Name="BtnExport" Style="{StaticResource Btn.Ghost}" Content="导出 CSV…" Height="29"
+                  Margin="8,0,0,0" Click="OnExport" />
+          <Button x:Name="BtnClear" Style="{StaticResource Btn.Mini.Danger}" Content="清空日志"
+                  Margin="8,0,0,0" Click="OnClear" />
+        </WrapPanel>
+
+        <TextBlock x:Name="TxtStatus" Style="{StaticResource Desc}" Margin="0,8,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <!-- ============ 分页 ============ -->
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+      <Button x:Name="BtnPrev" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+              FontSize="12.5" Content="上一页" Click="OnPrev" />
+      <TextBlock x:Name="PageInfo" Style="{StaticResource Desc}" Margin="14,0"
+                 VerticalAlignment="Center" />
+      <Button x:Name="BtnNext" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+              FontSize="12.5" Content="下一页" Click="OnNext" />
+      <Border Width="1" Height="16" Background="{DynamicResource B.Border}" Margin="14,0" />
+      <TextBlock Text="跳至" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+      <TextBox x:Name="JumpBox" Width="50" Height="26" Margin="6,0,6,0" FontSize="12.5"
+               Padding="6,3" VerticalContentAlignment="Center"
+               PreviewKeyDown="OnJumpKey" ToolTip="输入页码后回车" />
+      <TextBlock Text="页" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="0,0,12,0" />
+      <TextBlock Text="每页" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+      <ComboBox x:Name="PageSizeSel" Width="74" Height="26" Margin="6,0,0,0" FontSize="12.5"
+                SelectionChanged="OnPageSizeChanged" ToolTip="每页显示条数" />
+    </StackPanel>
+
+    <!-- ============ 列表 ============ -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,14">
+      <DataGrid x:Name="Grid" Style="{StaticResource Dg.ReadOnly}"
+                HeadersVisibility="Column" RowHeight="{DynamicResource DgRowHeight}">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="时间" Width="150">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate><TextBlock Style="{StaticResource DgCellMono}" Text="{Binding AtText}"
+                                       VerticalAlignment="Center" ToolTip="{Binding AtFullText}" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="账号" Width="76">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding User}"
+                                       VerticalAlignment="Top" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="来源" Width="58">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding Source}"
+                                       VerticalAlignment="Top" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="动作" Width="72">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding Action}"
+                                       VerticalAlignment="Top" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="对象" Width="92">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate><TextBlock Style="{StaticResource DgCellText}" Text="{Binding Target}"
+                                       VerticalAlignment="Top" /></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="详情" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellText}" Text="{Binding Detail}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           ToolTip="{Binding Detail}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="结果" Width="56">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding ResultText}" VerticalAlignment="Top">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource DgCellText}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Ok}" Value="False">
+                          <Setter Property="Foreground" Value="{DynamicResource B.Danger}" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+  </Grid>
+</UserControl>

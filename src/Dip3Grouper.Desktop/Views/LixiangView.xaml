@@ -1,0 +1,218 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.LixiangView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Dip3GrouperApp.Desktop"
+             xmlns:ctl="clr-namespace:Dip3GrouperApp.Desktop.Controls">
+  <!-- 统一节奏：外层左右 20 / 上下 16，内容占满窗口 -->
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- 标题 + 视图切换 -->
+    <Grid Grid.Row="0" Margin="2,0,0,14">
+      <TextBlock Style="{StaticResource PageTitle}" Text="立项指南查询" VerticalAlignment="Center" />
+      <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+              Style="{StaticResource Segment.Bar}" ctl:Segment.Track="True">
+        <Grid>
+          <Border Style="{StaticResource Segment.Slide}" />
+          <StackPanel Orientation="Horizontal">
+            <RadioButton x:Name="SegItems" GroupName="LxView" Style="{StaticResource Segment.Item}"
+                         Content="价格项目" IsChecked="True" Checked="OnViewChanged" />
+            <RadioButton x:Name="SegJiedu" GroupName="LxView" Style="{StaticResource Segment.Item}"
+                         Content="解读辅导" Checked="OnViewChanged" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+      <!-- ============ 价格项目 ============ -->
+      <Grid Grid.Row="1" x:Name="ItemsView">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 多条件筛选：区段 / 类别 / 加收扩展 + 关键词（拼音全拼与首字母），键入 280ms 防抖后自动检索 -->
+        <WrapPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+          <ComboBox x:Name="SectionSel" Style="{StaticResource Cb}" Width="236" Margin="0,0,8,0"
+                    ToolTip="按立项指南区段筛选" SelectionChanged="OnSectionChanged" />
+          <ComboBox x:Name="CatSel" Style="{StaticResource Cb}" Width="176" Margin="0,0,8,0"
+                    ToolTip="按项目类别筛选" SelectionChanged="OnFilterChanged" />
+          <ComboBox x:Name="FlagSel" Style="{StaticResource Cb}" Width="132" Margin="0,0,8,0"
+                    ToolTip="按是否含加收项 / 扩展项筛选" SelectionChanged="OnFilterChanged" />
+          <TextBox x:Name="LxQuery" Style="{StaticResource Tb}" Width="230" Margin="0,0,8,0"
+                   PreviewKeyDown="OnLxQueryKey" TextChanged="OnQueryText"
+                   ToolTip="名称 / 类别 / 单位 / 服务产出 / 计价说明；支持全拼与首字母（如 xzyz → 心脏移植）" />
+          <Button Style="{StaticResource Btn.Primary}" Content="查 询" Margin="0,0,8,0" Click="OnLxSearch" />
+          <Button Style="{StaticResource Btn.Ghost}" Content="清 空" Click="OnLxClear"
+                  ToolTip="清空关键词与全部筛选，恢复全部指南" />
+          <TextBlock x:Name="LxStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                     VerticalAlignment="Center" />
+        </WrapPanel>
+
+        <!-- 类别使用说明（可折叠） -->
+        <Border Grid.Row="1" x:Name="UsageBox" Visibility="Collapsed" Margin="0,0,0,10"
+                Background="{DynamicResource B.InfoBg}" BorderBrush="{DynamicResource B.InfoBorder}" BorderThickness="1"
+                CornerRadius="10" Padding="0">
+          <Expander x:Name="UsageExpander" IsExpanded="False" BorderThickness="0"
+                    Background="Transparent" Padding="14,10">
+            <Expander.Header>
+              <TextBlock x:Name="UsageHead" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="{DynamicResource B.Accent}" Text="本类使用说明（点击展开）" />
+            </Expander.Header>
+            <TextBox x:Name="UsageText" Style="{StaticResource Tx.Sel}"
+                     Foreground="{DynamicResource B.InfoText}" Margin="0,6,0,0">
+              <TextBox.ContextMenu>
+                <ContextMenu Style="{StaticResource Ctx.Menu}">
+                  <MenuItem Style="{StaticResource Ctx.Item}" Header="复制全文" Click="OnCopyUsage" />
+                  <MenuItem Style="{StaticResource Ctx.Item}" Header="全选" Click="OnSelectUsage" />
+                </ContextMenu>
+              </TextBox.ContextMenu>
+            </TextBox>
+          </Expander>
+        </Border>
+
+        <!-- 右键：复制（选中文字 / 名称 / 计价说明 / 本行 / 详情全文）、打开跨库关联 -->
+        <DataGrid Grid.Row="2" x:Name="LxGrid" Style="{StaticResource Dg.ReadOnly}"
+                  RowHeight="{DynamicResource DgRowHeight}"
+                  local:RowMenu.Enable="True" local:DetailToggle.Enable="True"
+                  RowDetailsVisibilityMode="VisibleWhenSelected">
+          <DataGrid.RowDetailsTemplate>
+            <DataTemplate>
+              <Border Margin="10,4,10,10" Background="{DynamicResource B.SoftBg}"
+                      BorderBrush="{DynamicResource B.SoftBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12">
+                <StackPanel>
+                  <!-- 星号列承载长文本：横向 StackPanel 会给子元素无限宽度导致永不换行 -->
+                  <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="2" Style="{StaticResource Btn.Link}" Content="收起"
+                            Margin="10,0,0,0" VerticalAlignment="Center"
+                            local:DetailToggle.Collapse="True"
+                            ToolTip="收起本行详情（也可直接点卡片空白处，或再点一次本行）" />
+                    <Border Grid.Column="0" Style="{StaticResource Chip}" VerticalAlignment="Center">
+                      <TextBlock Style="{StaticResource ChipText}" Text="{Binding SeqChip}" />
+                    </Border>
+                    <TextBox Grid.Column="1" Style="{StaticResource Tx.Sel}" Text="{Binding Name, Mode=OneWay}"
+                             FontSize="13.5" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding Blocks}"
+                                ItemTemplate="{StaticResource Block.Tpl}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </DataGrid.RowDetailsTemplate>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+          <Button x:Name="LxPrev" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+                  FontSize="12.5" Content="上一页" Click="OnLxPrev" />
+          <TextBlock x:Name="LxPageInfo" Style="{StaticResource Desc}" Margin="14,0"
+                     VerticalAlignment="Center" />
+          <Button x:Name="LxNext" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+                  FontSize="12.5" Content="下一页" Click="OnLxNext" />
+          <Border Width="1" Height="16" Background="{DynamicResource B.Border}" Margin="14,0" />
+          <TextBlock Text="跳至" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+          <TextBox x:Name="LxJump" Width="50" Height="26" Margin="6,0,6,0" FontSize="12.5"
+                   Padding="6,3" VerticalContentAlignment="Center"
+                   PreviewKeyDown="OnLxJumpKey" ToolTip="输入页码后回车" />
+          <TextBlock Text="页" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="0,0,12,0" />
+          <TextBlock Text="每页" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+          <ComboBox x:Name="LxPageSize" Width="74" Height="26" Margin="6,0,0,0" FontSize="12.5"
+                    SelectionChanged="OnLxPageSizeChanged" ToolTip="每页显示条数" />
+        </StackPanel>
+      </Grid>
+
+      <!-- ============ 解读辅导 ============ -->
+      <Grid Grid.Row="1" x:Name="JieduView" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+          <ComboBox x:Name="IssueSel" Style="{StaticResource Cb}" Width="180"
+                    SelectionChanged="OnIssueChanged" />
+          <TextBox x:Name="JdQuery" Style="{StaticResource Tb}" Width="420" Margin="8,0,0,0"
+                   PreviewKeyDown="OnJdQueryKey" />
+          <Button Style="{StaticResource Btn.Primary}" Content="查 询" Margin="8,0,0,0" Click="OnJdSearch" />
+          <Button Style="{StaticResource Btn.Ghost}" Content="清 空" Margin="8,0,0,0" Click="OnJdClear"
+                  ToolTip="清空关键词并恢复全部期次列表" />
+          <TextBlock x:Name="JdStatus" Style="{StaticResource Desc}" Margin="14,0,0,0"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" x:Name="JdGrid" Style="{StaticResource Dg.ReadOnly}"
+                  local:RowMenu.Enable="True" local:DetailToggle.Enable="True"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  RowDetailsVisibilityMode="VisibleWhenSelected">
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="期次" Width="92">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding IssueText}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="题号" Width="72">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding No}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn x:Name="JdQCol" Header="解读问题" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Style="{StaticResource DgCellText}" Text="{Binding Q}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+          <DataGrid.RowDetailsTemplate>
+            <DataTemplate>
+              <Border Margin="10,4,10,10" Background="{DynamicResource B.SoftBg}"
+                      BorderBrush="{DynamicResource B.SoftBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12">
+                <StackPanel>
+                  <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="2" Style="{StaticResource Btn.Link}" Content="收起"
+                            Margin="10,0,0,0" VerticalAlignment="Center"
+                            local:DetailToggle.Collapse="True"
+                            ToolTip="收起本行详情（也可直接点卡片空白处，或再点一次本行）" />
+                    <Border Grid.Column="0" Style="{StaticResource Chip}" VerticalAlignment="Center">
+                      <TextBlock Style="{StaticResource ChipText}" Text="{Binding IssueChip}" />
+                    </Border>
+                    <TextBox Grid.Column="1" Style="{StaticResource Tx.Sel}" Text="{Binding Q, Mode=OneWay}"
+                             FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                  </Grid>
+                  <TextBox Style="{StaticResource Tx.Sel}" Text="{Binding A, Mode=OneWay}"
+                           Foreground="{DynamicResource B.InfoText}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </DataGrid.RowDetailsTemplate>
+        </DataGrid>
+
+        <TextBlock Grid.Row="2" x:Name="JdPageInfo" Style="{StaticResource Desc}"
+                   HorizontalAlignment="Center" Margin="0,12,0,0" />
+      </Grid>
+    <!-- 页面渐显（控件见 Controls/BusyVeil）：解读辅导首次进入要解析 224 条问答、
+         建上千行虚拟列表，实测 300~600ms 主线程不刷新。不压淡的话页签白块没挪、
+         右侧还是旧内容，看着像「点了没生效」。
+         ⚠ 必须与内容同级（控件按 Parent.Children 找兄弟统一压淡）。 -->
+    <ctl:BusyVeil x:Name="Busy" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="50" />
+  </Grid>
+</UserControl>

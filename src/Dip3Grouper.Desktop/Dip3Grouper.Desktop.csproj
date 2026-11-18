@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 桌面客户端：WPF 原生界面，直接调用 Dip3Grouper.Core，不经过 HTTP、不依赖 Node。 -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!--
+      根命名空间刻意**不**用 Dip3Grouper.Desktop：
+      Core 里存在 public class Dip3Grouper（位于 namespace Dip3Grouper），
+      XAML 代码生成器会写出全限定名，例如
+          internal Dip3Grouper.Desktop.Views.SingleGroupView ViewSingle;
+      此时最左段 Dip3Grouper 会被解析成那个「类」而不是命名空间，
+      编译即报 CS0426：类型"Dip3Grouper"中不存在类型名"Desktop"。
+      去掉首段同名即可彻底规避。程序集名不受命名空间影响，保持原样。
+    -->
+    <RootNamespace>Dip3GrouperApp.Desktop</RootNamespace>
+    <AssemblyName>Dip3Grouper.Desktop</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- exe / 任务栏 / 资源管理器图标；窗口与托盘图标用嵌入的同一份 Assets\app.ico -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!--
+      程序版本号：客户端自动更新靠它比对（Core/AppUpdate.cs 读 AssemblyInformationalVersion）。
+      发布新版时改这里一处即可；Core 侧读不到时退回常量 AppVersion.Fallback。
+    -->
+    <Version>1.5.0</Version>
+    <!-- 托盘图标用 WinForms NotifyIcon（WPF 没有原生托盘），随 WindowsDesktop 运行时一起发布，不增加体积 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!--
+      WFAC010：WinForms 分析器劝我们把 app.manifest 里的 dpiAware/dpiAwareness 删掉，
+      改用 ApplicationHighDpiMode。但那套 API 是给 WinForms 主窗口用的，本项目是 WPF
+      （只借了一个 NotifyIcon），WPF 的 PerMonitorV2 清晰渲染仍然依赖 manifest，
+      删掉会让高分屏下发糊。故按「已知噪音」屏蔽，不改变清单内容。
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <!--
+      注意：此处**不**固定 RuntimeIdentifier / SelfContained。
+      绿色版发布时由命令行指定（见 publish-desktop.bat）：
+        dotnet publish -c Release -r win-x64 /p:SelfContained=true
+      写死在 csproj 里会让日常 Debug 构建也走 RID 专用还原，编译时间显著变长。
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <!-- WinForms 隐式 using 会与 WPF 的 Application/MessageBox 等撞名，托盘代码里全部全限定 -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dip3Grouper.Core\Dip3Grouper.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,143 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.BatchGroupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 统一节奏：外层左右 20 / 上下 16，内容占满窗口 -->
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- 标题 -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,14">
+      <TextBlock Style="{StaticResource PageTitle}" Text="批量分组" />
+      <TextBlock Style="{StaticResource Desc}" Margin="12,0,0,3" VerticalAlignment="Bottom"
+                 Text="上传 Excel 或直接粘贴表格批量分组，支持导出结果" />
+    </StackPanel>
+
+    <!-- 工具条 -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+      <Button x:Name="BtnUpload" Style="{StaticResource Btn.Primary}" Content="上传病案 Excel"
+              Click="OnUpload" />
+      <Button Style="{StaticResource Btn.Ghost}" Content="下载模板" Margin="8,0,0,0"
+              Click="OnDownloadTemplate" />
+      <Button Style="{StaticResource Btn.Ghost}" Content="粘贴表格分组" Margin="8,0,0,0"
+              Click="OnBatchText" />
+      <Button x:Name="BtnSaveResult" Style="{StaticResource Btn.Ghost}" Content="导出结果 Excel"
+              Margin="8,0,0,0" Visibility="Collapsed" Click="OnSaveResult" />
+      <CheckBox x:Name="UseMapping" Style="{StaticResource Cbx}" Margin="18,0,0,0"
+                VerticalAlignment="Center" Content="启用诊断映射转换" />
+      <TextBlock x:Name="TxtSource" Style="{StaticResource Desc}" Margin="16,0,0,0"
+                 VerticalAlignment="Center" Text="" />
+    </StackPanel>
+
+    <!-- 粘贴区 -->
+    <Grid Grid.Row="2" Margin="0,0,0,10">
+      <TextBox x:Name="BatchText" Style="{StaticResource Tb.Multi}" Height="126"
+               FontFamily="{StaticResource Font.Mono}" FontSize="12" />
+      <TextBlock x:Name="PasteHint" IsHitTestVisible="False" Margin="11,9,0,0"
+                 VerticalAlignment="Top" FontSize="12.5"
+                 Foreground="{DynamicResource B.Faint}" TextWrapping="Wrap"
+                 Text="在 Excel 中选中表格区域（含首行列名）复制，直接粘贴到这里，例如：&#x0a;病案号&#x09;主要诊断编码&#x09;其他诊断编码&#x09;主要手术操作编码&#x0a;MZ001&#x09;T20.600&#x09;T31.000x001&#x09;" />
+    </Grid>
+
+    <TextBlock Grid.Row="2" x:Name="BatchErr" Style="{StaticResource Desc}"
+               Foreground="{DynamicResource B.Danger}" Margin="0,0,0,10"
+               VerticalAlignment="Bottom" Visibility="Collapsed" />
+
+    <!-- 摘要条 -->
+    <Border Grid.Row="3" x:Name="SummaryBar" Visibility="Collapsed" Margin="0,0,0,10"
+            Background="{DynamicResource B.AccentSoft}" BorderBrush="{DynamicResource B.InfoBorder}"
+            BorderThickness="1" CornerRadius="10" Padding="14,9">
+      <StackPanel Orientation="Horizontal" x:Name="SummaryPanel" />
+    </Border>
+
+      <!-- 结果表 -->
+      <DataGrid Grid.Row="4" x:Name="Grid" Style="{StaticResource Dg.ReadOnly}"
+                Visibility="Collapsed">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="序号" Width="62">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding Seq}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="病案号" Width="112">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding CaseId}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="主要诊断编码" Width="146">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding MainDiag}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="主要手术操作编码" Width="158">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding MainProc}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="入组" Width="72">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellText}" FontWeight="SemiBold"
+                           Text="{Binding MatchedText}" Foreground="{Binding MatchedBrush}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="组别" Width="120">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <Border HorizontalAlignment="Left" VerticalAlignment="Center"
+                        CornerRadius="10" Padding="9,2" Background="{Binding TypeBrush}">
+                  <TextBlock Text="{Binding TypeText}" FontSize="11.5" FontWeight="Bold"
+                             Foreground="{DynamicResource B.White}" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="病种序号" Width="96">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}" Text="{Binding DipSeq}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <!-- 分组名称用固定宽而不是 *：本表固定宽列已排满，
+               星号列在离屏渲染（无滚动宿主实测宽度）时会被压成 0 宽，整列看不见 -->
+          <DataGridTemplateColumn Header="分组名称 / 未入组原因" Width="360">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellText}" Text="{Binding NameOrReason}"
+                           ToolTip="{Binding NameOrReason}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <!-- 省局反馈清单命中：只标键（H65-22.02），完整组合与建议走 ToolTip。
+               ⚠ 必须放在「分组名称」之后：它前面若再插一列固定宽，宽度吃满后
+                 带 * 的「分组名称」会被挤出可视区（实测 1500 宽窗口直接看不到），
+                 而这个列表把固定宽列排在星号列前面。 -->
+          <DataGridTemplateColumn Header="目录库外病种" Width="150">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock Style="{StaticResource DgCellMono}"
+                           Text="{Binding OutLibText}"
+                           Foreground="{Binding OutLibBrush}"
+                           ToolTip="{Binding OutLibTip}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+  </Grid>
+</UserControl>

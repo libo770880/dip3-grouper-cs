@@ -1,0 +1,27 @@
+# ---- 构建产物 ----
+bin/
+obj/
+dist/
+publish/
+*.user
+*.suo
+
+# ---- IDE / 工具缓存 ----
+.vs/
+.idea/
+*.cache
+TestResults/
+
+# ---- 本地备份与截图（不入库，本地已留档） ----
+_backups/
+_shots/
+data/_backup/
+
+# ---- 临时与系统文件 ----
+Thumbs.db
+Desktop.ini
+nul
+
+# ---- 运行时状态（含密码哈希 / 审计日志，不入公开仓库；缺失时程序自动重建默认值） ----
+data/settings.json
+data/audit-log.json

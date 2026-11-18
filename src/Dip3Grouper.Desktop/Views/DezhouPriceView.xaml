@@ -1,0 +1,335 @@
+<UserControl x:Class="Dip3GrouperApp.Desktop.Views.DezhouPriceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Dip3GrouperApp.Desktop"
+             xmlns:ctl="clr-namespace:Dip3GrouperApp.Desktop.Controls">
+  <UserControl.Resources>
+    <!-- 使用说明列表的行容器：只做内容宿主，不要选中高亮 / 焦点框（正文还要能拖选复制） -->
+    <Style x:Key="Usage.Row" TargetType="ListBoxItem">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <ContentPresenter />
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- 作废对照「批次 · 执行」单元格：文号一行、执行日期一行（挤在一列里写「文号 · 日期」
+         必然被截成「德医保发〔2025〕33号 · 20…」，两行既完整又不占更多横向空间） -->
+    <DataTemplate x:Key="BatchCell">
+      <StackPanel VerticalAlignment="Center" ToolTip="{Binding BatchTip}">
+        <TextBlock Text="{Binding Doc}" FontSize="12.5"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding Exec}" FontSize="11" Margin="0,1,0,0"
+                   Foreground="{DynamicResource B.Muted}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 收藏星标单元格：仅依赖 DynamicResource 取色，换肤跟随（勿改成 StaticResource） -->
+    <DataTemplate x:Key="FavCell">
+      <Button Click="OnToggleFav" Content="★" FontSize="14" Width="26" Height="24" Padding="0"
+              BorderThickness="0" FocusVisualStyle="{x:Null}" Cursor="Hand"
+              ToolTip="加入 / 移出「常用收藏」">
+        <Button.Style>
+          <Style TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource B.Faint}" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding IsFav}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource B.Warn}" />
+              </DataTrigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource B.HoverBg}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </Button.Style>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="2,0,0,12">
+      <TextBlock Style="{StaticResource PageTitle}" Text="德州物价查询" VerticalAlignment="Center" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <!-- 视图切换：现行项目 = 规范整合后的新项目表；作废对照 = 各批次映射关系表；
+             旧版物价 = 45号文对码表（规范整合前的旧价格项目，联查作废对照标出已作废与现行标准）。
+             白块是 Grid 里的第一层 Segment.Slide，由 Controls/Segment.cs 驱动滑动。 -->
+        <Border Style="{StaticResource Segment.Bar}" ctl:Segment.Track="True">
+          <Grid>
+            <Border Style="{StaticResource Segment.Slide}" />
+            <StackPanel Orientation="Horizontal">
+              <RadioButton x:Name="SegLive" GroupName="DzView" Style="{StaticResource Segment.Item}"
+                           Content="现行项目" IsChecked="True" Checked="OnViewChanged"
+                           ToolTip="规范整合后执行的新项目（主项 / 加收 / 扩展）" />
+              <RadioButton x:Name="SegCancel" GroupName="DzView" Style="{StaticResource Segment.Item}"
+                           Content="作废对照" Checked="OnViewChanged"
+                           ToolTip="各批次公布作废的原价格项目及其对应的新项目（来自通知附件「映射关系表」）" />
+              <RadioButton x:Name="SegLegacy" GroupName="DzView" Style="{StaticResource Segment.Item}"
+                           Content="旧版物价" Checked="OnViewChanged"
+                           ToolTip="德医保发〔2024〕45号对码表（规范整合前的旧价格项目）；已作废的行同时给出对应的现行标准" />
+              <RadioButton x:Name="SegCmp" GroupName="DzView" Style="{StaticResource Segment.Item}"
+                           Content="新旧比对" Checked="OnViewChanged"
+                           ToolTip="现行项目 ↔ 旧版物价价格比对（经作废对照反查旧项目）；差额与涨幅按三级价计算，涨红跌绿" />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </StackPanel>
+    </Grid>
+
+    <!-- 多条件筛选：批次 / 类别 / 性质 / 医保支付 + 关键词（拼音全拼与首字母），键入 280ms 防抖后自动检索。
+         布局分两段：上一段筛选控件允许换行，下一段是「状态 + 导出」的操作行（右对齐）。
+         不能把导出组塞进同一个 WrapPanel —— 窗口一窄它就被拆成两个控件分居两行（错行）。 -->
+    <StackPanel Grid.Row="1" Margin="0,0,0,10">
+    <WrapPanel x:Name="FilterBar" Orientation="Horizontal">
+      <ComboBox x:Name="DocSel" Style="{StaticResource Cb}" Width="186" Margin="0,0,8,0"
+                ToolTip="按落地文号（批次）筛选" SelectionChanged="OnDocChanged" />
+      <ComboBox x:Name="CatSel" Style="{StaticResource Cb}" Width="144" Margin="0,0,8,0"
+                ToolTip="按类别筛选（选中具体类别后下方显示该类「使用说明」）" SelectionChanged="OnFilterChanged" />
+      <ComboBox x:Name="KindSel" Style="{StaticResource Cb}" Width="108" Margin="0,0,8,0"
+                ToolTip="按项目性质筛选（主项 / 加收项 / 扩展项）" SelectionChanged="OnFilterChanged" />
+      <ComboBox x:Name="LevelSel" Style="{StaticResource Cb}" Width="132" Margin="0,0,8,0"
+                ToolTip="按医院级别筛选：只显示该级别有价的项目（三级 / 二级 / 一级为价格档位，属于同一项目）"
+                SelectionChanged="OnLevelChanged" />
+      <ComboBox x:Name="InsSel" Style="{StaticResource Cb}" Width="126" Margin="0,0,8,0"
+                ToolTip="按是否医保支付筛选" SelectionChanged="OnFilterChanged" />
+      <ComboBox x:Name="StatusSel" Style="{StaticResource Cb}" Width="126" Margin="0,0,8,0"
+                Visibility="Collapsed"
+                ToolTip="按作废状态筛选（与各批次作废对照联查判定）" SelectionChanged="OnFilterChanged" />
+      <ComboBox x:Name="CmpSel" Style="{StaticResource Cb}" Width="136" Margin="0,0,8,0"
+                Visibility="Collapsed"
+                ToolTip="按比对范围筛选（全部 / 有旧价可比 / 仅作废对照 / 纯新增）" SelectionChanged="OnCmpChanged" />
+      <!-- 比对口径：同一项目在三级 / 二级 / 一级三档价下差额与涨幅都不同，
+           只按三级价比等于默认「三级医院」一种视角。仅新旧比对视图显示。 -->
+      <ComboBox x:Name="CmpLevelSel" Style="{StaticResource Cb}" Width="126" Margin="0,0,8,0"
+                Visibility="Collapsed"
+                ToolTip="比对口径：按三级 / 二级 / 一级医院价格比差额与涨幅（切换只换显示，不重新取数）"
+                SelectionChanged="OnCmpLevelChanged" />
+      <TextBox x:Name="DzQuery" Style="{StaticResource Tb}" Width="200" Margin="0,0,8,0"
+               PreviewKeyDown="OnQueryKey" TextChanged="OnQueryText"
+               ToolTip="编码 / 名称 / 类别 / 服务产出 / 计价说明；支持全拼与首字母（如 xzyz → 心脏移植）" />
+      <Button x:Name="SearchBtn" Style="{StaticResource Btn.Primary}" Content="查 询" Margin="0,0,8,0" Click="OnSearch" />
+      <Button Style="{StaticResource Btn.Ghost}" Content="清 空" Margin="0,0,10,0" Click="OnClear"
+              ToolTip="清空关键词与全部筛选，恢复全部批次" />
+      <!-- 链接跳转后出现：一键回到跳转前的视图与检索词（点分段切换或清空时消失） -->
+      <Button x:Name="BackBtn" Style="{StaticResource Btn.Ghost}" Content="← 返回" Margin="0,0,10,0"
+              Visibility="Collapsed" Click="OnBack"
+              ToolTip="回到跳转前的视图与检索条件" />
+      <CheckBox x:Name="FavOnly" Style="{StaticResource Cbx}" Content="仅看收藏" Margin="0,0,8,0"
+                VerticalAlignment="Center" Checked="OnFavFilterChanged" Unchecked="OnFavFilterChanged"
+                ToolTip="只显示已加入「常用收藏」的项目（点行首的 ★ 收藏或取消）" />
+    </WrapPanel>
+
+    <!-- 操作行：左侧状态（超长省略，不挤动右侧按钮），右侧「导出范围 + 导出」固定成组 -->
+    <Grid Margin="0,8,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <!-- 操作行左侧：统计（常驻）+ 状态消息（临时）。
+           统计原来跟视图页签挤在标题行右侧，1366 宽下把页签顶得很紧；挪到这里后
+           标题行只留页签，统计和「已导出 / 无匹配记录」这类消息共用一条基线。 -->
+      <Grid Grid.Column="0" VerticalAlignment="Center" Margin="2,0,12,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatText" Grid.Column="0" Style="{StaticResource Desc}"
+                   VerticalAlignment="Center" />
+        <TextBlock x:Name="DzStatus" Grid.Column="1" Style="{StaticResource Desc}"
+                   VerticalAlignment="Center" Margin="16,0,0,0"
+                   TextTrimming="CharacterEllipsis"
+                   ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+      </Grid>
+      <StackPanel x:Name="ExportBar" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                  VerticalAlignment="Center">
+        <ComboBox x:Name="ExpScope" Style="{StaticResource Cb}" Width="152" Margin="0,0,8,0"
+                  ToolTip="导出范围：当前筛选的全部结果 / 仅当前页 / 仅常用收藏" />
+        <Button x:Name="ExpBtn" Style="{StaticResource Btn.Ghost}" Content="导 出"
+                Click="OnExport" ToolTip="导出为 Excel（列同后台模板，可直接再导回；附「类别使用说明」表）" />
+      </StackPanel>
+    </Grid>
+    </StackPanel>
+
+    <!-- 类别使用说明：默认展示全部批次（按「文号 · 类别」分组）；筛选文号 / 类别后跟随收窄；
+         可收起；限高内部滚动，不撑长页面。详情卡摘录提示「查看全部」即落在此面板 -->
+    <Border x:Name="UsageCard" Grid.Row="2" Margin="0,0,0,10" CornerRadius="10" Padding="12,9"
+            Background="{DynamicResource B.InfoBg}" BorderBrush="{DynamicResource B.InfoBorder}"
+            BorderThickness="1" Visibility="Collapsed">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Border Grid.Column="0" Style="{StaticResource Chip}" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource ChipText}" Text="使用说明"
+                       Foreground="{DynamicResource B.InfoText}" />
+          </Border>
+          <TextBlock Grid.Column="1" x:Name="UsageTitle" FontSize="12.5" FontWeight="SemiBold"
+                     Foreground="{DynamicResource B.InfoText}" TextWrapping="Wrap"
+                     VerticalAlignment="Center" Margin="2,0,8,0" />
+          <Button Grid.Column="2" x:Name="UsageToggle" Style="{StaticResource Btn.Link}"
+                  Content="收起" Click="OnToggleUsage" VerticalAlignment="Center" />
+        </Grid>
+        <!-- 使用说明正文：**必须是虚拟化列表**。原先 ScrollViewer+ItemsControl 会把上百条
+             「类别使用说明」一次性全建成 TextBox（每条都是可选复制文本），首开要多花 700ms；
+             换成 ListBox + 回收虚拟化后只建可见的 5~6 条，翻看体验不变。 -->
+        <Border Grid.Row="1" x:Name="UsageBody" Margin="0,8,0,0">
+          <Grid>
+            <ListBox x:Name="UsageList" MaxHeight="170" Background="Transparent"
+                     BorderThickness="0" Padding="0" Focusable="False"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Visible"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ItemTemplate="{StaticResource Usage.Item}"
+                     ItemContainerStyle="{StaticResource Usage.Row}">
+              <ListBox.OpacityMask>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                  <GradientStop Color="#FF000000" Offset="0" />
+                  <GradientStop Color="#FF000000" Offset="0.88" />
+                  <GradientStop Color="#00000000" Offset="1" />
+                </LinearGradientBrush>
+              </ListBox.OpacityMask>
+            </ListBox>
+            <!-- 底边渐隐：列表按 170 定高裁剪时最后一行常被切成半截字。
+                 只靠 ListBox 的 OpacityMask 在虚拟化滚动容器里不稳定，这里再压一层
+                 「透明 → 卡片底色」的遮罩兜底（不挡鼠标，右侧 10px 留给滚动条）。 -->
+            <Border Height="22" VerticalAlignment="Bottom" Margin="0,0,10,0" IsHitTestVisible="False"
+                    Background="{DynamicResource B.InfoBg}">
+              <Border.OpacityMask>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                  <GradientStop Color="Transparent" Offset="0" />
+                  <GradientStop Color="Black" Offset="1" />
+                </LinearGradientBrush>
+              </Border.OpacityMask>
+            </Border>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- 右键：加入 / 移出常用收藏、复制（选中文字 / 编码 / 名称 / 本行 / 详情全文）、打开跨库关联 -->
+    <DataGrid Grid.Row="3" x:Name="DzGrid" Style="{StaticResource Dg.ReadOnly}"
+              RowHeight="{DynamicResource DgRowHeight}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+              local:RowMenu.Enable="True" local:DetailToggle.Enable="True"
+              RowDetailsVisibilityMode="VisibleWhenSelected">
+      <DataGrid.RowDetailsTemplate>
+        <DataTemplate>
+          <Border Margin="10,4,10,10" Background="{DynamicResource B.SoftBg}"
+                  BorderBrush="{DynamicResource B.SoftBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12">
+            <StackPanel>
+              <!-- 星号列承载长文本：横向 StackPanel 会给子元素无限宽度导致永不换行 -->
+              <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="3" Style="{StaticResource Btn.Link}" Content="收起"
+                        Margin="10,0,0,0" VerticalAlignment="Center"
+                        local:DetailToggle.Collapse="True"
+                        ToolTip="收起本行详情（也可直接点卡片空白处，或再点一次本行）" />
+                <Border Grid.Column="0" Style="{StaticResource Chip}" VerticalAlignment="Center">
+                  <TextBox Style="{StaticResource Tx.Sel}" Text="{Binding Code, Mode=OneWay}"
+                           FontFamily="{StaticResource Font.Mono}" FontSize="11" FontWeight="Bold"
+                           Foreground="{DynamicResource B.Accent}" VerticalAlignment="Center" />
+                </Border>
+                <TextBox Grid.Column="1" Style="{StaticResource Tx.Sel}" Text="{Binding Name, Mode=OneWay}"
+                         FontSize="13.5" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <Border Grid.Column="2" Style="{StaticResource Chip}" Margin="8,0,0,0" VerticalAlignment="Center"
+                        Visibility="{Binding HasKindChip, Converter={StaticResource BoolToVis}}">
+                  <TextBlock Style="{StaticResource ChipText}" Text="{Binding KindChip}" />
+                </Border>
+              </Grid>
+              <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="118" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="三级 / 二级 / 一级" FontSize="12.5"
+                           Foreground="{DynamicResource B.Muted}" VerticalAlignment="Top" />
+                <TextBox Grid.Column="1" Style="{StaticResource Tx.Sel}" Text="{Binding PriceLine, Mode=OneWay}"
+                         FontFamily="{StaticResource Font.Mono}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Blocks}"
+                            ItemTemplate="{StaticResource Block.Tpl}" />
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </DataGrid.RowDetailsTemplate>
+    </DataGrid>
+
+    <!-- 作废对照视图：一行 = 一条「作废原项目 → 对应新项目」（无替代的新列为「直接废止」）；
+         列与现行项目不同（无价格/医保列），共用同一套筛选条与分页；
+         行高：MinRowHeight 跟着密度走，RowHeight=NaN 让「新编码+名称」换行时行自己长高 ——
+         写死 RowHeight 会把第二行顶到表头下面，看着就是错位 -->
+    <DataGrid Grid.Row="3" x:Name="DzCancelGrid" Style="{StaticResource Dg.ReadOnly}"
+              RowHeight="NaN" MinRowHeight="{DynamicResource DgRowHeight}"
+              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+              Visibility="Collapsed" IsReadOnly="True" />
+
+    <!-- 旧版物价视图：45号文对码表；「状态」列联查作废对照（已作废红 / 现行绿），
+         已作废行给出「现行标准」（对应新项目编码+名称，可多个，蓝色链接点击跳现行项目）；
+         行高同上：现行标准换行（一对多 / 名称长）时行高自动增长，固定 31px 会内容溢出错位 -->
+    <DataGrid Grid.Row="3" x:Name="DzLegacyGrid" Style="{StaticResource Dg.ReadOnly}"
+              RowHeight="NaN" MinRowHeight="{DynamicResource DgRowHeight}"
+              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+              Visibility="Collapsed" IsReadOnly="True" />
+
+    <!-- 新旧比对视图：一行 = 现行项目 ↔ 一个旧版物价项目（经作废对照反查）；
+         差额 / 涨幅列按正负着色（涨红跌绿，中国行情惯例）；行高 Auto（旧项目名一对多时可换行） -->
+    <DataGrid Grid.Row="3" x:Name="DzCmpGrid" Style="{StaticResource Dg.ReadOnly}"
+              RowHeight="{DynamicResource DgRowHeight}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+              Visibility="Collapsed" IsReadOnly="True" />
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+      <Button x:Name="DzPrev" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+              FontSize="12.5" Content="上一页" Click="OnPrev" />
+      <TextBlock x:Name="DzPageInfo" Style="{StaticResource Desc}" Margin="14,0"
+                 VerticalAlignment="Center" />
+      <Button x:Name="DzNext" Style="{StaticResource Btn.Ghost}" Padding="12,4" MinHeight="28"
+              FontSize="12.5" Content="下一页" Click="OnNext" />
+      <!-- 跳页 / 每页条数：78 页逐页点太慢，直接跳 -->
+      <Border Width="1" Height="16" Background="{DynamicResource B.Border}" Margin="14,0" />
+      <TextBlock Text="跳至" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+      <TextBox x:Name="DzJump" Width="50" Height="26" Margin="6,0,6,0" FontSize="12.5"
+               Padding="6,3" VerticalContentAlignment="Center"
+               PreviewKeyDown="OnJumpKey" ToolTip="输入页码后回车" />
+      <TextBlock Text="页" Style="{StaticResource Desc}" VerticalAlignment="Center" Margin="0,0,12,0" />
+      <TextBlock Text="每页" Style="{StaticResource Desc}" VerticalAlignment="Center" />
+      <ComboBox x:Name="DzPageSize" Width="74" Height="26" Margin="6,0,0,0" FontSize="12.5"
+                SelectionChanged="OnPageSizeChanged" ToolTip="每页显示条数" />
+    </StackPanel>
+
+    <!-- 页面渐显：点「现行项目 / 作废对照 / 旧版物价 / 新旧比对」时把整页压淡再淡回。
+         切视图要重建批次与类别下拉、重排 50 行（实测 200~400ms，拼音检索的批次重建更久），
+         这段时间主线程被占满，界面完全不动 —— 不给反馈就像「点了没反应 / 卡死」。
+         控件本体见 Controls/BusyVeil（共用给四个分段页面）。
+         ⚠ 必须与要淡出的内容「同级」：控件按 Parent.Children 找兄弟统一压淡，
+           放进嵌套的 Grid 里就只会淡掉那一小块。
+         ⚠ 高度取满 0~3 行：顶部进度线要压在页签行上沿，而不是缩在表格里面。 -->
+    <ctl:BusyVeil x:Name="Busy" Grid.Row="0" Grid.RowSpan="4" Panel.ZIndex="50" />
+  </Grid>
+</UserControl>

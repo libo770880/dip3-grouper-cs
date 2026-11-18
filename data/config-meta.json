@@ -1,0 +1,46 @@
+{
+  "importedAt": "2026-09-23T13:24:31.603Z",
+  "sourceName": "304d49bda67940e89dd9e401b01ae672.xlsx",
+  "counts": {
+    "xianqi": {
+      "label": "先期分组",
+      "total": 19
+    },
+    "bingxiang": {
+      "label": "并项核心病种",
+      "total": 1725
+    },
+    "fz_shaoshang": {
+      "label": "辅助细分-烧伤",
+      "total": 25
+    },
+    "fz_zhongliu": {
+      "label": "辅助细分-肿瘤",
+      "total": 42
+    },
+    "fz_jiehe": {
+      "label": "辅助细分-结核",
+      "total": 46
+    },
+    "jiehe_resist_codes": {
+      "label": "结核耐药诊断附表",
+      "total": 48
+    },
+    "jichu": {
+      "label": "基础核心病种",
+      "total": 3268
+    },
+    "jiceng": {
+      "label": "基层病种",
+      "total": 127
+    },
+    "excludedDiags": {
+      "label": "不纳入诊断",
+      "total": 4742
+    },
+    "excludedProcs": {
+      "label": "不纳入手术",
+      "total": 4111
+    }
+  }
+}

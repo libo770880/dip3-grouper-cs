@@ -1,0 +1,173 @@
+<!--
+  ============================================================================
+  配色资源字典（只放"默认主题 azure"的取值）
+  ============================================================================
+
+  两条硬规矩，改配色时务必遵守：
+
+  ① 用色处一律写 {DynamicResource B.Xxx}，不要写 {StaticResource}。
+     换肤由 Theming/ThemeManager.cs 在运行时**替换 App.Resources 里的同名条目**完成；
+     StaticResource 在 XAML 载入时就固化成了具体对象，换肤时不会跟着变。
+
+  ② 新增颜色必须先在这里登记语义键（并同步补 Theming/ThemeCatalog.cs 的 5 套主题），
+     不允许在页面里写死十六进制值 —— 否则深色主题下会出现"白底白字"。
+
+  语义键分四组：
+    · 表面：Bg / Card / Border / BorderStrong / Top / SoftBg / SoftBorder / SegBg
+    · 文字：Text / Muted / Faint / InfoText / WarnText
+    · 强调：Accent / AccentHover / AccentSoft / White
+    · 语义：Ok / Warn / Danger / DangerSoft / DangerHover
+            + 行态 RowAlt / RowHover / RowSelected / ScrollThumb / HoverBg / FocusBg
+            + 提示 InfoBg / InfoBorder / WarnBg
+            + 侧栏 Sidebar / SidebarHead / SidebarText / SidebarTextFaint / SidebarHover
+  ============================================================================
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ============ Color 型（供渐变 / 动画使用；普通控件请用下面 B.* 画刷） ============ -->
+  <Color x:Key="Color.Bg">#eef2f8</Color>
+  <Color x:Key="Color.Card">#ffffff</Color>
+  <Color x:Key="Color.Border">#e3e8ef</Color>
+  <Color x:Key="Color.BorderStrong">#d3d9e3</Color>
+  <Color x:Key="Color.Text">#17212e</Color>
+  <Color x:Key="Color.Muted">#5b6b81</Color>
+  <Color x:Key="Color.Faint">#9aa3b2</Color>
+  <Color x:Key="Color.Accent">#1d6fe0</Color>
+  <Color x:Key="Color.AccentHover">#1558b8</Color>
+  <Color x:Key="Color.AccentSoft">#e8f1fd</Color>
+  <Color x:Key="Color.Ok">#16a34a</Color>
+  <Color x:Key="Color.Warn">#d97706</Color>
+  <Color x:Key="Color.Danger">#dc2626</Color>
+  <Color x:Key="Color.RowAlt">#f8fafc</Color>
+  <Color x:Key="Color.RowHover">#eef4fe</Color>
+  <Color x:Key="Color.RowSelected">#dfeafb</Color>
+  <Color x:Key="Color.ScrollThumb">#c4cdd9</Color>
+  <Color x:Key="Color.Top">#ffffff</Color>
+  <Color x:Key="Color.Sidebar">#1b2436</Color>
+  <Color x:Key="Color.SidebarHead">#0f1728</Color>
+  <Color x:Key="Color.SidebarText">#aab6cc</Color>
+  <Color x:Key="Color.SidebarTextFaint">#7d8aa5</Color>
+  <Color x:Key="Color.SidebarHover">#2a3550</Color>
+  <Color x:Key="Color.SegBg">#e9eef6</Color>
+  <Color x:Key="Color.SoftBg">#f7f9fc</Color>
+  <Color x:Key="Color.SoftBorder">#e3eefb</Color>
+  <Color x:Key="Color.InfoBg">#f0f7ff</Color>
+  <Color x:Key="Color.InfoBorder">#d6e8fb</Color>
+  <Color x:Key="Color.InfoText">#33455e</Color>
+  <Color x:Key="Color.WarnBg">#fef3c7</Color>
+  <Color x:Key="Color.WarnText">#92400e</Color>
+  <Color x:Key="Color.DangerSoft">#f3c5c5</Color>
+  <Color x:Key="Color.DangerHover">#e11d48</Color>
+  <Color x:Key="Color.HoverBg">#eef1f6</Color>
+  <Color x:Key="Color.FocusBg">#fffdf5</Color>
+  <Color x:Key="Color.White">#ffffff</Color>
+
+  <!-- ============ 画刷（页面用色统一走这些键） ============ -->
+  <!-- 表面 -->
+  <SolidColorBrush x:Key="B.Bg" Color="#eef2f8" />
+  <SolidColorBrush x:Key="B.Card" Color="#ffffff" />
+  <SolidColorBrush x:Key="B.Border" Color="#e3e8ef" />
+  <SolidColorBrush x:Key="B.BorderStrong" Color="#d3d9e3" />
+  <SolidColorBrush x:Key="B.Top" Color="#ffffff" />
+  <SolidColorBrush x:Key="B.SoftBg" Color="#f7f9fc" />
+  <SolidColorBrush x:Key="B.SoftBorder" Color="#e3eefb" />
+  <SolidColorBrush x:Key="B.SegBg" Color="#e9eef6" />
+
+  <!-- 文字 -->
+  <SolidColorBrush x:Key="B.Text" Color="#17212e" />
+  <SolidColorBrush x:Key="B.Muted" Color="#5b6b81" />
+  <SolidColorBrush x:Key="B.Faint" Color="#9aa3b2" />
+  <SolidColorBrush x:Key="B.InfoText" Color="#33455e" />
+  <SolidColorBrush x:Key="B.WarnText" Color="#92400e" />
+
+  <!-- 强调 -->
+  <SolidColorBrush x:Key="B.Accent" Color="#1d6fe0" />
+  <SolidColorBrush x:Key="B.AccentHover" Color="#1558b8" />
+  <SolidColorBrush x:Key="B.AccentSoft" Color="#e8f1fd" />
+  <SolidColorBrush x:Key="B.White" Color="#ffffff" />
+
+  <!-- 语义 -->
+  <SolidColorBrush x:Key="B.Ok" Color="#16a34a" />
+  <SolidColorBrush x:Key="B.Warn" Color="#d97706" />
+  <SolidColorBrush x:Key="B.Danger" Color="#dc2626" />
+  <SolidColorBrush x:Key="B.DangerSoft" Color="#f3c5c5" />
+  <SolidColorBrush x:Key="B.DangerHover" Color="#e11d48" />
+  <SolidColorBrush x:Key="B.InfoBg" Color="#f0f7ff" />
+  <SolidColorBrush x:Key="B.InfoBorder" Color="#d6e8fb" />
+  <SolidColorBrush x:Key="B.WarnBg" Color="#fef3c7" />
+
+  <!-- 「可另收，但项目价要减收」（特殊功能耗材）：Deduct 前景 / DeductBg 底色。
+       与「可另收」(蓝)、「需核对」(橙)、「不可另收」(红) 区分开，一线扫一眼就能认出这是第三种口径。 -->
+  <SolidColorBrush x:Key="B.Deduct" Color="#0f766e" />
+  <SolidColorBrush x:Key="B.DeductBg" Color="#e6f4f1" />
+
+  <!-- 「征求意见稿」标记（前台新项目征求意见页）：DraftBg 行底色 / DraftFg 文字 /
+       DraftBadge 角标底 / DraftBorder 角标边框。默认值对齐 azure 主题，运行时由 ThemeManager 覆写。
+       注意：XAML 引用处一律 DynamicResource，StaticResource 换肤不跟变（README §8.12） -->
+  <SolidColorBrush x:Key="B.DraftBg" Color="#fffbea" />
+  <SolidColorBrush x:Key="B.DraftFg" Color="#7c4a03" />
+  <SolidColorBrush x:Key="B.DraftBadge" Color="#fde68a" />
+  <SolidColorBrush x:Key="B.DraftBorder" Color="#f5d78e" />
+
+  <!-- 行态与交互 -->
+  <SolidColorBrush x:Key="B.RowAlt" Color="#f8fafc" />
+  <SolidColorBrush x:Key="B.RowHover" Color="#eef4fe" />
+  <SolidColorBrush x:Key="B.RowSelected" Color="#dfeafb" />
+  <SolidColorBrush x:Key="B.ScrollThumb" Color="#c4cdd9" />
+  <SolidColorBrush x:Key="B.HoverBg" Color="#eef1f6" />
+  <SolidColorBrush x:Key="B.FocusBg" Color="#fffdf5" />
+
+  <!-- 侧栏 -->
+  <SolidColorBrush x:Key="B.Sidebar" Color="#1b2436" />
+  <SolidColorBrush x:Key="B.SidebarHead" Color="#0f1728" />
+  <SolidColorBrush x:Key="B.SidebarText" Color="#aab6cc" />
+  <SolidColorBrush x:Key="B.SidebarTextFaint" Color="#7d8aa5" />
+  <SolidColorBrush x:Key="B.SidebarHover" Color="#2a3550" />
+
+  <!-- 品牌方块「DIP」渐变（换肤时由 ThemeManager 重建） -->
+  <LinearGradientBrush x:Key="B.LogoBox" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#0e3a8c" Offset="0" />
+    <GradientStop Color="#1d6fe0" Offset="0.6" />
+    <GradientStop Color="#2f8fe6" Offset="1" />
+  </LinearGradientBrush>
+
+  <!-- ============ 分组类型徽章（分类语义色，不随主题变化） ============ -->
+  <LinearGradientBrush x:Key="Badge.XQ" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#ef4444" Offset="0" />
+    <GradientStop Color="#dc2626" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.FZ" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#f59e0b" Offset="0" />
+    <GradientStop Color="#d97706" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.BX" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#3b82f6" Offset="0" />
+    <GradientStop Color="#2563eb" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.JC" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#22c55e" Offset="0" />
+    <GradientStop Color="#16a34a" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.JICENG" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#14b8a6" Offset="0" />
+    <GradientStop Color="#0d9488" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.ZH" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#a855f7" Offset="0" />
+    <GradientStop Color="#7c3aed" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Badge.NONE" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#9ca3af" Offset="0" />
+    <GradientStop Color="#6b7280" Offset="1" />
+  </LinearGradientBrush>
+
+  <!-- ============ 字体 ============ -->
+  <FontFamily x:Key="Font.UI">Microsoft YaHei UI, Microsoft YaHei, Segoe UI</FontFamily>
+  <FontFamily x:Key="Font.Mono">Consolas, Courier New</FontFamily>
+
+  <!-- ============ 阴影（用 DropShadow 近似 CSS box-shadow） ============ -->
+  <DropShadowEffect x:Key="E.Card" BlurRadius="10" ShadowDepth="1" Direction="270"
+                    Color="#17212e" Opacity="0.10" />
+
+</ResourceDictionary>

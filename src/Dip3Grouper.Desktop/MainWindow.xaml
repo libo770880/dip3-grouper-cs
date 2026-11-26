@@ -74,41 +74,13 @@
         <!-- 右侧操作区 -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                     Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-          <!-- 表格行高：紧凑 / 标准。全局生效（物价四表 / 病种库 / 立项指南 / 审计日志），选择落本机 -->
-          <Button x:Name="BtnDensity" Style="{StaticResource Btn.Ghost}"
-                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
-                  Click="OnToggleDensity" ToolTip="表格行高：紧凑 / 标准（只影响本机）">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock Text="&#xE8A9;" FontFamily="Segoe MDL2 Assets"
-                         FontSize="13" VerticalAlignment="Center" />
-              <TextBlock x:Name="TxtDensity" Text="紧凑" Margin="5,0,0,0" FontSize="12.5"
-                         VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <!-- 界面主题：前台直接换肤（不用进后台），选择即落盘 -->
-          <Button x:Name="BtnTheme" Style="{StaticResource Btn.Ghost}"
-                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
-                  Click="OnToggleTheme" ToolTip="界面主题（换肤立即生效，只影响本机）">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock Text="&#xE790;" FontFamily="Segoe MDL2 Assets"
-                         FontSize="13" VerticalAlignment="Center" />
-              <TextBlock x:Name="TxtThemeBtn" Text="主题" Margin="5,0,0,0" FontSize="12.5"
-                         VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <!-- 检查更新：启动时已静默查过 GitHub Release；这里手动再查，结果用弹窗明确告知 -->
-          <Button x:Name="BtnUpdate" Style="{StaticResource Btn.Ghost}"
-                  Padding="10,0" Height="30" MinHeight="30" FontSize="12.5"
-                  Click="OnCheckUpdate"
-                  ToolTip="检查更新：到 GitHub Release 下载新版本">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets"
-                         FontSize="13" VerticalAlignment="Center" />
-              <TextBlock x:Name="TxtUpdate" Text="检查更新" Margin="5,0,0,0" FontSize="12.5"
-                         VerticalAlignment="Center" />
-            </StackPanel>
+          <!-- 更多（⋮，2026-11-24）：行高 / 主题 / 检查更新 / 后台管理 收进一个下拉。
+               标题栏原本四个药丸按钮并排，窗口一窄就挤；这里只留一个图标，铃铛（通知）单独保留。 -->
+          <Button x:Name="BtnMore" Style="{StaticResource Btn.Ghost}"
+                  Width="36" Height="30" MinHeight="30" Padding="0"
+                  Click="OnToggleMore" ToolTip="更多：表格行高 / 界面主题 / 检查更新 / 后台管理">
+            <TextBlock Text="&#xE712;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Button>
 
           <!-- 通知公告：服务端后台发布 → 这里轮询取回（未读数角标 + 点击展开列表） -->
@@ -128,9 +100,6 @@
             </StackPanel>
           </Button>
 
-          <Button x:Name="BtnAdmin" Style="{StaticResource Btn.Ghost}"
-                  Padding="13,0" Height="30" MinHeight="30" FontSize="12.5"
-                  Content="后台管理" Click="OnOpenAdmin" />
 
           <Border Width="1" Height="20" Background="{DynamicResource B.Border}" Margin="12,0" />
 
@@ -246,6 +215,92 @@
         </Grid>
       </Border>
     </Popup>
+    <!-- ================= 更多菜单 =================
+         标题栏右侧原来并排「紧凑 / 主题 / 检查更新 / 后台管理」四个药丸按钮，窗口一窄就挤成一团。
+         现在收进一个 ⋮ 下拉：铃铛（通知公告）单独保留，其余全部在菜单里。
+         菜单项沿用全宽点击区（Btn.Menu），右侧显示当前状态（行高：紧凑/标准、版本号）。 -->
+    <Popup x:Name="MorePopup" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+           PopupAnimation="Fade" PlacementTarget="{Binding ElementName=BtnMore}">
+      <Border Width="248" Margin="6" CornerRadius="10"
+              Background="{DynamicResource B.Card}"
+              BorderBrush="{DynamicResource B.BorderStrong}" BorderThickness="1">
+        <Border.Effect>
+          <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270"
+                            Color="#0f1728" Opacity="0.24" />
+        </Border.Effect>
+        <StackPanel Margin="6">
+          <Button x:Name="BtnDensity" Style="{StaticResource Btn.Menu}" Click="OnToggleDensity"
+                  ToolTip="表格行高：紧凑 / 标准（只影响本机）">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="&#xE8A9;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Muted}" />
+              <TextBlock Grid.Column="1" Text="表格行高" Margin="10,0,0,0" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtDensity" Grid.Column="2" Text="紧凑" FontSize="11.5"
+                         VerticalAlignment="Center" Foreground="{DynamicResource B.Muted}" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="BtnTheme" Style="{StaticResource Btn.Menu}" Click="OnToggleTheme"
+                  ToolTip="界面主题（换肤立即生效，只影响本机）">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="&#xE790;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Muted}" />
+              <TextBlock Grid.Column="1" Text="界面主题" Margin="10,0,0,0" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtThemeBtn" Grid.Column="2" Text="&#xE76C;"
+                         FontFamily="Segoe MDL2 Assets" FontSize="11"
+                         VerticalAlignment="Center" Foreground="{DynamicResource B.Faint}" />
+            </Grid>
+          </Button>
+
+          <Border Height="1" Margin="8,4" Background="{DynamicResource B.Border}" />
+
+          <!-- 检查更新：启动时已静默查过 GitHub Release；这里手动再查，结果用弹窗明确告知 -->
+          <Button x:Name="BtnUpdate" Style="{StaticResource Btn.Menu}" Click="OnCheckUpdate"
+                  ToolTip="检查更新：到 GitHub Release 下载新版本">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="&#xE777;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Muted}" />
+              <TextBlock Grid.Column="1" Text="检查更新" Margin="10,0,0,0" VerticalAlignment="Center" />
+              <TextBlock x:Name="TxtUpdate" Grid.Column="2" Text="v1.0.1" FontSize="11.5"
+                         VerticalAlignment="Center" Foreground="{DynamicResource B.Faint}" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="BtnAdmin" Style="{StaticResource Btn.Menu}" Click="OnOpenAdmin"
+                  ToolTip="后台管理：数据维护 / 主题 / 通知公告">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="&#xE713;" FontFamily="Segoe MDL2 Assets"
+                         FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource B.Muted}" />
+              <TextBlock Grid.Column="1" Text="后台管理" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </Border>
+    </Popup>
+
     <!-- ================= 主题选择面板 =================
          前台直接换肤：点「主题」按钮弹出 5 套配色，选哪套立刻生效并写回设置。
          色块用的是各主题自己的颜色（固定值，不随当前主题变），外框与文字用

@@ -587,13 +587,32 @@ public partial class LixiangView : UserControl
     {
         LoadJd();
         _jdReady = true;
+        ShowJdUpdateBarFromRecord();
+    }
+
+    /// <summary>
+    /// 上次静默检查发现过新版（用户当时点了「否」或没理会）→ 进入本页时把提示条挂出来，
+    /// 不必再等一次 255 KB 下载。是否已应用的判断看记录里的 hasUpdate（应用后会被清掉）。
+    /// </summary>
+    private void ShowJdUpdateBarFromRecord()
+    {
+        if (_jdPending != null) return;
+        var rec = JieduSource.LoadRecord();
+        if (rec == null || !rec.HasUpdate || string.IsNullOrEmpty(rec.RemoteHash)) return;
+
+        var when = DateTimeOffset.TryParse(rec.CheckedAt, out var t)
+            ? t.ToLocalTime().ToString("MM-dd HH:mm")
+            : "上次";
+        TxtJdUpdate.Text = $"上次检查（{when}）发现官方解读有更新：原文 {rec.RemoteIssues} 期 · {rec.RemoteTotal} 条。"
+                         + "点「检查更新」核对差异并导入。";
+        JdUpdateBar.Visibility = Visibility.Visible;
     }
 
     /// <summary>
     /// 诊断用：直接切到「解读辅导」并按需展开某一行详情（离屏核对详情卡版式）。
     /// 走 OnViewChanged 那条路要等 IsLoaded + Dispatcher 回调，离屏渲染等不到。
     /// </summary>
-    internal void DiagJiedu(string q, int sel)
+    internal void DiagJiedu(string q, int sel, bool fakeUpdate = false)
     {
         SegItems.IsChecked = false;
         SegJiedu.IsChecked = true;
@@ -601,8 +620,25 @@ public partial class LixiangView : UserControl
         ItemsView.Visibility = Visibility.Collapsed;
         JieduView.Visibility = Visibility.Visible;
         EnsureJiedu();
+        if (fakeUpdate) DiagShowJdUpdateBar();
         if (!string.IsNullOrEmpty(q)) { JdQuery.Text = q; LoadJd(); }
         if (sel >= 0 && JdGrid.Items.Count > sel) JdGrid.SelectedIndex = sel;
+    }
+
+    /// <summary>诊断用：挂一条假的「发现新版」提示，离屏截图核对提示条版式（不写盘、不影响数据）。</summary>
+    internal void DiagShowJdUpdateBar()
+    {
+        var r = new JieduCheckResult
+        {
+            RemoteIssues = Enumerable.Range(1, 14).ToList(),
+            RemoteTotal = 238,
+            LocalIssues = Enumerable.Range(1, 13).ToList(),
+            LocalTotal = 226,
+            NewIssues = new List<int> { 14 },
+        };
+        for (var i = 1; i <= 12; i++) r.Added.Add(new JieduItem { Issue = 14, No = i, Q = "样例", A = "样例" });
+        r.Updated.Add(new JieduItem { Issue = 13, No = 2, Q = "样例", A = "样例" });
+        ShowJdUpdateBar(r);
     }
 
     /// <summary>诊断用：读取表格横向滚动条的真实尺寸关系（Extent 大于 Viewport 才会出现横条）。</summary>
@@ -721,6 +757,178 @@ public partial class LixiangView : UserControl
         {
             JdGrid.ItemsSource = null;
             JdStatus.Text = "加载失败：" + ex.Message;
+        }
+    }
+
+    // ==================================================================
+    // 解读辅导：检查国家医保局原文
+    // 原文地址固定（downfile.jsp?filename=976ce73a…wps），所以软件能记住它、
+    // 一点就比对；但绝不自动覆盖——发现新版只提示，用户点过才导入。
+    // ==================================================================
+
+    /// <summary>检查到、尚未应用的更新；提示条上「立即更新」用的就是它</summary>
+    private JieduCheckResult _jdPending;
+
+    /// <summary>启动静默检查的节流判断（默认 12 小时内查过就不再拉原文）</summary>
+    internal static bool NeedAutoCheck(int hours = 12)
+        => JieduSource.ShouldAutoCheck(JieduSource.LoadRecord(), hours);
+
+    /// <summary>
+    /// 检查官方解读辅导有没有出新一期。
+    /// <para>manual=true（用户点按钮）：任何结果都给明确反馈——已最新 / 有新版 / 连不上；<br/>
+    /// manual=false（启动静默检查）：只有「条目真的新增或修订」才提示，且同一份原文只打扰一次。</para>
+    /// </summary>
+    internal async Task CheckJieduAsync(bool manual)
+    {
+        var store = App.State.Lixiang;
+        var label = BtnJdCheck.Content;
+        BtnJdCheck.IsEnabled = false;
+        BtnJdCheck.Content = "检查中…";
+
+        JieduCheckResult res = null;
+        JieduCheckRecord rec = null;
+        string err = null;
+        try
+        {
+            var raw = await Task.Run(async () => await JieduSource.DownloadAsync()).ConfigureAwait(true);
+            res = await Task.Run(() => JieduSource.Compare(store, raw)).ConfigureAwait(true);
+
+            rec = JieduSource.LoadRecord();
+            rec.CheckedAt = DateTimeOffset.UtcNow.ToString("o");
+            rec.RemoteHash = res.RemoteHash;
+            rec.HasUpdate = res.HasUpdate;
+            rec.RemoteTotal = res.RemoteTotal;
+            rec.RemoteIssues = res.RemoteIssues.Count;
+            JieduSource.SaveRecord(rec);
+        }
+        catch (Exception ex)
+        {
+            err = ex.Message;   // JieduSourceException 的消息已经翻译成人话
+        }
+        finally
+        {
+            // 先把按钮恢复再弹窗：MessageBox 会阻塞，否则用户对着「检查中…」点确定
+            BtnJdCheck.Content = label;
+            BtnJdCheck.IsEnabled = true;
+        }
+
+        if (err != null) { if (manual) ShowCheckFailed(err); return; }
+
+        if (!res.HasUpdate)
+        {
+            _jdPending = null;
+            JdUpdateBar.Visibility = Visibility.Collapsed;
+            // 内容一致但本地没记过原文指纹（老数据）→ 顺手补记，幂等，只写一次
+            JieduSource.SyncFingerprint(store, res);
+            if (manual)
+                MessageBox.Show(Window.GetWindow(this),
+                    $"解读辅导已是最新：{res.RemoteIssues.Count} 期 · {res.RemoteTotal} 条。\n\n"
+                    + "（已核对国家医保局原文，内容与本地一致）",
+                    "检查解读更新", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        _jdPending = res;
+        ShowJdUpdateBar(res);
+
+        // 静默检查不重复打扰：同一份原文提示过一次就不再弹
+        var firstTime = !string.Equals(rec?.PromptedHash, res.RemoteHash, StringComparison.Ordinal);
+        if (!manual && !firstTime) return;
+
+        var ask = MessageBox.Show(Window.GetWindow(this),
+            JdUpdateText(res) + "\n\n是否现在更新？\n（导入前会自动备份 data/lixiang.json，可随时回滚）",
+            "解读辅导有更新", MessageBoxButton.YesNo, MessageBoxImage.Information, MessageBoxResult.No);
+        if (ask == MessageBoxResult.Yes) { ApplyJieduUpdate(res); return; }
+
+        rec ??= JieduSource.LoadRecord();
+        rec.PromptedHash = res.RemoteHash;
+        JieduSource.SaveRecord(rec);
+    }
+
+    private void ShowCheckFailed(string msg)
+    {
+        var go = MessageBox.Show(Window.GetWindow(this),
+            "检查失败：" + msg + "\n\n不影响软件其它功能。\n"
+            + "也可以点「是」用浏览器打开国家医保局网站，手动下载原文后在后台导入。",
+            "检查解读更新", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (go != MessageBoxResult.Yes) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(JieduSource.PortalUrl)
+            { UseShellExecute = true });
+        }
+        catch { /* 浏览器起不来就算了，用户自己能开 */ }
+    }
+
+    /// <summary>提示条 + 弹窗共用的文案（一行一件事，弹窗里按行展开）</summary>
+    private static string JdUpdateText(JieduCheckResult r)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"官方原文：{r.RemoteIssues.Count} 期 · {r.RemoteTotal} 条");
+        sb.Append($"　本地：{r.LocalIssues.Count} 期 · {r.LocalTotal} 条");
+        sb.Append('\n');
+        sb.Append($"新增 {r.Added.Count} 条");
+        if (r.Updated.Count > 0) sb.Append($"，修订 {r.Updated.Count} 条");
+        if (r.Removed.Count > 0) sb.Append($"，原文缺失 {r.Removed.Count} 条（本地保留）");
+        if (r.NewIssues.Count > 0)
+            sb.Append("\n新期次：第 " + string.Join("、", r.NewIssues) + " 期");
+        return sb.ToString();
+    }
+
+    private void ShowJdUpdateBar(JieduCheckResult r)
+    {
+        TxtJdUpdate.Text = "发现新版解读辅导 —— " + JdUpdateText(r).Replace("\n", "　·　");
+        JdUpdateBar.Visibility = Visibility.Visible;
+    }
+
+    private async void OnJdCheckUpdate(object sender, RoutedEventArgs e) => await CheckJieduAsync(manual: true);
+
+    private void OnJdApplyUpdate(object sender, RoutedEventArgs e)
+    {
+        if (_jdPending == null) { _ = CheckJieduAsync(manual: true); return; }
+        ApplyJieduUpdate(_jdPending);
+    }
+
+    private void OnJdDismissUpdate(object sender, RoutedEventArgs e)
+    {
+        JdUpdateBar.Visibility = Visibility.Collapsed;
+        if (_jdPending == null) return;
+        var rec = JieduSource.LoadRecord();
+        rec.PromptedHash = _jdPending.RemoteHash;   // 同一份原文别再弹
+        JieduSource.SaveRecord(rec);
+    }
+
+    /// <summary>落库：备份 → 按期次+题号 merge → 记哈希 → 刷新列表</summary>
+    private void ApplyJieduUpdate(JieduCheckResult r)
+    {
+        try
+        {
+            var backup = JieduSource.Apply(App.State.Lixiang, r);
+            _jdPending = null;
+            JdUpdateBar.Visibility = Visibility.Collapsed;
+
+            var rec = JieduSource.LoadRecord();
+            rec.HasUpdate = false;
+            rec.CheckedAt = DateTimeOffset.UtcNow.ToString("o");
+            rec.RemoteHash = r.RemoteHash;
+            rec.RemoteTotal = r.RemoteTotal;
+            rec.RemoteIssues = r.RemoteIssues.Count;
+            JieduSource.SaveRecord(rec);
+
+            LoadJd();
+            var kept = Math.Max(0, r.LocalTotal - r.Updated.Count);
+            MessageBox.Show(Window.GetWindow(this),
+                $"解读辅导已按增量更新：官方 {r.RemoteIssues.Count} 期 · {r.RemoteTotal} 条。\n"
+                + $"本次写入 新增 {r.Added.Count} 条、修订 {r.Updated.Count} 条；\n"
+                + $"其余 {kept} 条本地条目保持原样（不覆盖、不删除）。\n\n"
+                + (string.IsNullOrEmpty(backup) ? "" : "原数据已备份到：\n" + backup),
+                "解读辅导更新", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this),
+                "导入失败：" + ex.Message + "\n\n本地解读数据未被修改（导入前已备份）。",
+                "解读辅导更新", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

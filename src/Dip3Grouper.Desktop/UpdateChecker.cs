@@ -20,7 +20,7 @@ namespace Dip3GrouperApp.Desktop;
 internal static class UpdateChecker
 {
     /// <summary>本程序当前版本号（发布新包时必须同步改这里）</summary>
-    public const string CurrentVersion = "1.0.1";
+    public const string CurrentVersion = "1.0.2";
 
     private const string RepoOwner = "libo770880";
     private const string RepoName = "dip3-grouper-cs";

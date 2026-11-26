@@ -1578,6 +1578,50 @@ internal static class SelfTest
             d($"共 {r.Total:N0} 条 / {r.Issues.Count} 期 · 第{r.Issues[0].Issue}期 {one.Total:N0} 条");
         });
 
+        // 2026-11-18：原文地址固定（国家医保局 downfile.jsp），软件据此在内部核对更新。
+        // 比对必须「只认真实变化」：只差排版空白不能报更新，原文少一条也不能算更新（只提示、不删）。
+        Check("解读更新比对（新增 / 修订 / 空白不误报 / 原文缺失不触发）", d =>
+        {
+            if (!JieduSource.Url.Contains("976ce73a34c94bdab08920c94d2b5df6.wps"))
+                throw new Exception("内置的医保局原文地址丢失或写错");
+
+            var local = new List<JieduItem>
+            {
+                new() { Issue = 1, No = 1, Q = "第一问？", A = "答案一。" },
+                new() { Issue = 1, No = 2, Q = "第二问？", A = "答案二。" },
+            };
+            var remote = new List<JieduItem>
+            {
+                new() { Issue = 1, No = 1, Q = "第一问？", A = "答案一（修订）。" },   // 内容变了
+                new() { Issue = 1, No = 2, Q = "第二问？", A = "答 案\n二。" },        // 只差空白 → 不算
+                new() { Issue = 2, No = 1, Q = "新一期问题？", A = "新答案。" },        // 新一期
+            };
+            var r = JieduSource.CompareItems(local, remote, "序");
+            if (r.Added.Count != 1 || r.Added[0].Issue != 2) throw new Exception("新增条目未识别（第2期第1题）");
+            if (r.Updated.Count != 1 || r.Updated[0].No != 1) throw new Exception("修订条目未识别（第1期第1题）");
+            if (!r.HasUpdate) throw new Exception("有新增/修订却判定为无需更新");
+            if (r.NewIssues.Count != 1 || r.NewIssues[0] != 2) throw new Exception("新期次判定错了");
+
+            // 原文少一条：只提示，不触发更新（本地可能有人工补充，且多为解析抖动）
+            var r2 = JieduSource.CompareItems(local, new List<JieduItem> { local[0] }, "");
+            if (r2.Removed.Count != 1) throw new Exception("原文缺失条目未计入提示");
+            if (r2.HasUpdate) throw new Exception("仅有原文缺失就判定为有更新，会误删历史条目");
+
+            var r3 = JieduSource.CompareItems(local, local, "");
+            if (r3.HasUpdate || r3.Added.Count + r3.Updated.Count + r3.Removed.Count > 0)
+                throw new Exception("完全一致时仍报出差异");
+
+            // 增量应用：落库集合只含「新增 + 修订」，未变化与本地多出的条目一律不进导入管线
+            var delta = JieduSource.BuildDelta(r);
+            if (delta.Count != 2) throw new Exception($"增量集合应为 2 条（新增 1 + 修订 1），实际 {delta.Count}");
+            if (!delta.Any(x => x.Issue == 2 && x.No == 1) || !delta.Any(x => x.Issue == 1 && x.No == 1))
+                throw new Exception("增量集合内容不对：应只含第2期第1题（新增）与第1期第1题（修订）");
+            var delta0 = JieduSource.BuildDelta(r3);
+            if (delta0.Count != 0) throw new Exception("无差异时增量集合应为空（避免全量重导入刷元数据）");
+
+            d("新增 1 / 修订 1 / 空白差异 0 / 缺失仅提示 · 增量落库 2 条 · 地址与比对口径正确");
+        });
+
         // 2026-10-30：切答案时把下一题的「2.」留在上一题末尾，详情卡正文凭空多一行序号。
         // 用户就是这么发现的（第1期第1题）：既查存量数据干不干净，也用一个两题的样例把切分边界钉死。
         Check("解读辅导答案不带游离题号（切分边界 / 存量清洁）", d =>
@@ -1830,6 +1874,24 @@ internal static class SelfTest
                 // ① 入口就位：标题栏按钮 + 5 张卡（含当前选中）
                 var btn = (Button)win.FindName("BtnTheme");
                 if (btn == null) throw new Exception("标题栏没有主题入口按钮");
+
+                // 2026-11-24：行高 / 主题 / 检查更新 / 后台管理 收进「更多」下拉，
+                // 标题栏右侧只留「更多 + 铃铛」两颗按钮；主题按钮必须在下拉里，不再单独占位。
+                var more = (Button)win.FindName("BtnMore");
+                if (more == null) throw new Exception("标题栏没有「更多」入口");
+                if (win.MorePanel == null) throw new Exception("「更多」下拉没有内容");
+                if (btn.IsDescendantOf(win.MorePanel) == false)
+                    throw new Exception("主题按钮没在下拉面板里（标题栏又开始并排堆按钮了）");
+                if (System.Windows.Media.VisualTreeHelper.GetParent(btn) is null)
+                    throw new Exception("主题按钮没有父容器，XAML 结构不对");
+                if (System.Windows.Media.VisualTreeHelper.GetParent(more) is not StackPanel bar
+                    || !bar.Children.OfType<Button>().Any(b => b.Name == "BtnNotice"))
+                    throw new Exception("标题栏右侧应有「更多 + 通知」两颗按钮");
+                var leaked = bar.Children.OfType<Button>()
+                    .Where(b => b.Name is "BtnTheme" or "BtnDensity" or "BtnAdmin" or "BtnUpdate")
+                    .Select(b => b.Name).ToList();
+                if (leaked.Count > 0)
+                    throw new Exception("这些按钮还在标题栏上并排堆着：" + string.Join("/", leaked));
                 if (win.ThemeCards.Count != ThemeCatalog.All.Count)
                     throw new Exception($"色卡数量 {win.ThemeCards.Count}，应为 {ThemeCatalog.All.Count}");
                 if (win.SelectedThemeId != ThemeManager.CurrentId)

@@ -124,6 +124,9 @@ public static class AppPaths
     /// <summary>应用设置（软件名称 / 主题 / 后台账号口令）</summary>
     public static string SettingsFile => Path.Combine(DataDir, "settings.json");
 
+    /// <summary>解读辅导「上次查过国家医保局原文」的时间与水印（本机私有，不参与数据分发）</summary>
+    public static string LixiangCheckFile => Path.Combine(DataDir, "lixiang-check.json");
+
     public static void SetRoot(string root)
     {
         if (!string.IsNullOrWhiteSpace(root)) _root = Path.GetFullPath(root);

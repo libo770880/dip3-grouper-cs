@@ -327,6 +327,15 @@ public class JieduStore
     public string Preface { get; set; } = "";
     public string Source { get; set; } = "";
     public string ImportedAt { get; set; }
+
+    /// <summary>
+    /// 导入时原文字节的 SHA-256（小写十六进制）。国家医保局那个下载地址是固定的，
+    /// 服务器又不返回 ETag / Last-Modified，只能靠内容哈希判断「有没有出新一期」。
+    /// 老数据没这个字段（null），首次检查会解析一遍做全量比对，无差异则只补记哈希、不打扰用户。
+    /// </summary>
+    public string SourceHash { get; set; }
+    /// <summary>原文字节数，仅用于提示里显示「255 KB」，不参与判断。</summary>
+    public long SourceSize { get; set; }
 }
 
 public class JieduItem

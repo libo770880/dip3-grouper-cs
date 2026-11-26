@@ -63,6 +63,46 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 
+  <!-- ==================================================================
+       标题栏「更多」下拉菜单项：整行左对齐、无边框，悬停浅底（2026-11-24）
+       ================================================================== -->
+  <Style x:Key="Btn.Menu" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource Font.UI}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource B.Text}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="7"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="Center" RecognizesAccessKey="False" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource B.HoverBg}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="bd" Property="Opacity" Value="0.75" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.42" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- 行内小按钮 -->
   <Style x:Key="Btn.Mini" TargetType="Button" BasedOn="{StaticResource BtnBase}">
     <Setter Property="FontSize" Value="12" />

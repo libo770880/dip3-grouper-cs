@@ -3753,6 +3753,69 @@ RowHeight="NaN" MinRowHeight="{DynamicResource DgRowHeight}"
 所有带 `newCode` 的作废行都必须能在现行项目库找到该编码，另加一条锁死
 `310511011 → 013105010100001`。修完全库悬空数 **1 → 0**，自检 122/122，两包已重打。
 
+### 9.51 解读辅导：官方地址固定，软件内自查 + 手动更新（2026-11-18 18:3x）
+
+**需求**：解读辅导来自国家医保局一份**固定地址**的 WPS（`downfile.jsp?classid=0&filename=976ce73a…wps`，
+每期往里追加，地址不变）。原先只能整包重发或人工重导入，用户根本不知道官方有没有出第 14 期。
+
+**做法**：地址固定 → 内置进软件；检查永远只读，落库必须用户点头。
+
+- 新增 `Core/LixiangUpdate.cs`（`JieduSource`）：下载原文 → SHA-256 → 与
+  `lixiang.json → jiedu.sourceHash` 比对；该接口**不返回 ETag / Last-Modified**，
+  `Content-Length` 相同也不代表内容相同，只有哈希算数。
+- 哈希变了才解析（`DocToText` 读 OLE piece table，纯托管，不依赖 WPS/COM），
+  再按（期次, 题号）比对；文本比较前**去掉全部空白**，否则 WPS 排版换行漂移会整天误报「内容变了」。
+- 「原文少了 N 条」只提示不删、也不单独触发更新（本地可能有人工补充，多为解析抖动）。
+- `JieduStore` 加 `sourceHash` / `sourceSize` 两个字段；`JieduImport` 重建对象后由 `Apply` 补回。
+
+**UI**：解读辅导工具条「检查解读更新」+ 页内提示条（官方 14 期 238 条 / 本地 13 期 226 条 / 新增…）。
+启动静默检查延迟 6 秒、12 小时节流（`data/lixiang-check.json`），同一份原文只提示一次；点「忽略」不再来烦。
+
+**验证**：
+- `--probe-jiedu`：真实下载 255 KB → **13 期 226 条，added=0 updated=0 removed=0**（当前库就是这份原文）；
+- `--probe-jiedu-apply <临时根>`：在副本上删掉第 13 期第 1 题再导入 → 补回 226 条、
+  再比对 0 差异、哈希一致、备份文件生成（真实 `data/` 全程未动）；
+- 自检 **124/124**（新增 #42 锁比对口径与内置地址）；截图 `jd-clean` / `jd-bar` / `jd-small`（1060×700 不挤）。
+
+### 9.52 解读辅导：工具栏改为自适应 + 更新改增量落库（2026-11-24 13:4x–14:0x）
+
+**问题一（挤）**：工具条里搜索框写死 `Width=420`，窗口一窄就把「查询 / 清空 / 检查解读更新」挤变形，
+状态文字也被顶出边界。改成 `Grid` 列布局：关键词框 `Width="*" MinWidth="220"` 吃剩余宽度，
+其余列 `Auto`；提示条右侧按钮组加 `Margin="16,0,0,0"`，长文案换行后也不会贴住「立即更新」。
+
+**问题二（更新语义）**：`Apply` 原先把**整份原文 226 条**都过一遍 `JieduImport(mode=merge)`——
+虽然不删条目，但每条都重写一次、前言与来源等元数据也一并重置，本质仍是「全量重导入」。
+现改为**增量**：`BuildDelta(r)` 只取 `Added + Updated`，`delta.Count == 0` 时连导入都不进；
+前言只在归一化后确实不同时才替换。
+
+- `Core/LixiangUpdate.cs`：新增纯函数 `BuildDelta`；`Apply` 只写增量、前言按需更新。
+- `Views/LixiangView.xaml.cs`：更新完成提示改为「新增 X / 修订 Y，其余 N 条本地保持原样（不覆盖、不删除）」。
+- `SelfTest.cs` #42 追加断言：增量集合恰为 2 条（新增 1 + 修订 1），无差异时为空集。
+- 自检 **124/124 PASS**；截图 `jd-fix`（1060×700）/ `jd-fix2`（900×680）/ `jd-fix3`（820×680），工具栏不挤、提示条正常换行。
+
+### 9.53 标题栏右侧收进「更多」下拉：行高 / 主题 / 检查更新 / 后台管理（2026-11-24 14:0x）
+
+**问题**：标题栏右侧并排「紧凑 / 主题 / 检查更新 / 铃铛 / 后台管理」五个药丸按钮，窗口一窄就挤成一团
+（用户截图：按钮之间几乎无缝、字被压）。9.52 改的是页面内工具条，这次是标题栏本身。
+
+**做法**：
+
+- 只留两颗按钮：**「更多」（⋮，宽 36）** + 铃铛（通知公告）。其余全部进下拉。
+- `MainWindow.xaml` 新增 `MorePopup`（248 宽、圆角 10、投影），四项：
+  `表格行高 · 当前值`、`界面主题 ›`、`检查更新 · v1.0.1`、`后台管理`，中间一条分隔线。
+- `Themes/Controls.xaml` 新增 `Btn.Menu`：整行左对齐、无边框、悬停浅底、高度 34。
+- 菜单项沿用原有控件名（`BtnDensity / BtnTheme / BtnUpdate / BtnAdmin`），代码只改三处：
+  `ThemePopup.PlacementTarget` 与配色面板定位改为 `BtnMore`；`OnOpenAdmin` 先收菜单；
+  `OnCheckUpdate` 结束后右侧恢复成版本号（`v{CurrentVersion}`，不再写死文案）。
+- 关不掉的坑：`StaysOpen=False` 时点按钮会先被判定「外部点击」关掉面板，再触发 Click 又弹回来。
+  用 `_moreClosedAt` 记关闭时刻，250ms 内的点击视为「刚关掉」，不再重开。
+- `ApplyCompactNav` 里对旧按钮的显隐/文案收缩（`AdminBtnFull/Short`、`TxtThemeBtn` 等）一并删除——
+  菜单项不随窗口宽度伸缩，那套适配已无意义。
+
+**验证**：`--probe-main more <out.png>` 新增诊断（打开下拉并单独渲染面板）；
+自检 #74 追加断言：标题栏右侧只剩「更多 + 通知」、主题按钮必须在下拉内、四个旧按钮不得残留；
+**124/124 PASS**。截图 `_shots/more.png`（1060×700 标题栏）与 `more-menu.png`（下拉面板）。
+
 ## 10. HTTP 接口一览
 
 前台：`/api/group`、`/api/group-trace`（分组溯源，独立接口——见下）、`/api/batch`、`/api/batch-file`、`/api/batch-template`、
@@ -3861,3 +3924,21 @@ WPS 二进制）重新导入：仍为 13 期，但**条数 224 → 226**。
   `HasDanglingNo` 残留 0。
 - 导入走项目自己的管线（`AdminService.ImportJiedu`，mode=replace），不手工改 JSON。
 - 备份 `data/_backup/lixiang.20261118-*.json`；自检 123/123。
+
+### 11.2 解读辅导：软件内检查官方更新（2026-11-18，v1.0.2 起）
+
+原文地址固定，所以软件记住它；**检查只读，落库要用户确认**。
+
+- **判断口径**：下载原文（255 KB，UA + Referer 必带，否则被拦）→ SHA-256 → 比
+  `lixiang.json → jiedu.sourceHash`。该接口没有 ETag / Last-Modified，只能靠哈希。
+  哈希变了才解析、才比对（`Core/LixiangUpdate.cs`）。
+- **差异口径**：按（期次, 题号）；文本比较去掉全部空白（WPS 换行会漂）。
+  「原文少了 N 条」只提示、不删除、不单独触发更新。
+- **写入**：先备份整份 `lixiang.json` 到 `data/_backup/lixiang-yyyyMMdd-HHmmss.json`（留最近 10 份），
+  再 merge 入库并记哈希。merge 不 replace —— 原文只追加，replace 会因解析抖动误删历史条目。
+- **入口**：解读辅导页「检查解读更新」（三种结果都明确反馈，连不上可跳官网手动下载）；
+  启动静默检查（`App.AutoCheckJieduAsync`，延迟 6 秒、12 小时节流、同一份原文只提示一次）。
+- **诊断**：`--probe-jiedu`（下载+比对，不写库）、
+  `--probe-jiedu-apply <临时根>`（临时副本上验证「备份→合并→再比对」往返，不碰真实数据）。
+- **自检**：#42 锁比对口径（新增/修订/空白不误报/原文缺失不触发）与内置地址，总计 124/124。
+

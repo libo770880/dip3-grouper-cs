@@ -212,15 +212,52 @@ public static class Probe
             {
                 case "dz": win.NavDz.IsChecked = true; break;
                 case "lx": win.NavLx.IsChecked = true; break;
+                case "jd": win.NavLx.IsChecked = true; break;
+                case "jdu": win.NavLx.IsChecked = true; break;
                 default: win.NavGf.IsChecked = true; break;
             }
 
             d.BeginInvoke(DispatcherPriority.SystemIdle, new Action(() =>
             {
+                // jd = 立项指南 → 解读辅导视图（截图核对工具栏按钮 / 更新提示条版式）
+                // jdu = 同上，并挂一条「发现新版」提示，用于核对提示条
+                if (nav is "jd" or "jdu") win.ViewLx.DiagJiedu("", -1, nav == "jdu");
                 DumpRows(win, "点开页签后");
+
+                // more = 标题栏「更多」下拉（核对菜单项版式；面板是独立 Popup，需单独渲染）
+                if (nav == "more")
+                {
+                    win.DiagOpenMore();
+                    var t0 = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+                    t0.Tick += (_, _) =>
+                    {
+                        t0.Stop();
+                        Capture(win, outPath);
+                        if (win.MorePanel is FrameworkElement mp)
+                            Capture(mp, System.IO.Path.Combine(
+                                System.IO.Path.GetDirectoryName(outPath) ?? ".",
+                                System.IO.Path.GetFileNameWithoutExtension(outPath) + "-menu.png"));
+                        App.DiagFinish(0);
+                    };
+                    t0.Start();
+                    return;
+                }
                 Console.WriteLine($"[probe-nav] bar vis={win.LoadTrack.Visibility} " +
                                   $"w={win.LoadTrack.ActualWidth:F0} h={win.LoadTrack.ActualHeight:F0} " +
                                   $"slideX={win.LoadSlideX.X:F0} opacity={(win.ViewDz.Opacity):F2}");
+                // 解读辅导要走一次 Busy 压淡渐显，立刻截会截到全白；等动画收尾再取样
+                if (nav is "jd" or "jdu")
+                {
+                    var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+                    t.Tick += (_, _) =>
+                    {
+                        t.Stop();
+                        Capture(win, outPath);
+                        App.DiagFinish(0);
+                    };
+                    t.Start();
+                    return;
+                }
                 Capture(win, outPath);
                 App.DiagFinish(0);
             }));
@@ -242,12 +279,23 @@ public static class Probe
 
     private static void Capture(FrameworkElement root, string outPath)
     {
-        var bmp = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bmp.Render(root);
-        var enc = new PngBitmapEncoder();
-        enc.Frames.Add(BitmapFrame.Create(bmp));
-        using var fs = File.Create(outPath);
-        enc.Save(fs);
+        // 离屏窗口为了不抢视觉把 Opacity 压到 0.01，RenderTargetBitmap 会把这个透明度一起渲染进去，
+        // 不还原就截出一张全白。截完立刻恢复，不影响窗口本身。
+        var oldOpacity = root.Opacity;
+        root.Opacity = 1;
+        try
+        {
+            var bmp = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(root);
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(bmp));
+            using var fs = File.Create(outPath);
+            enc.Save(fs);
+        }
+        finally
+        {
+            root.Opacity = oldOpacity;
+        }
     }
 
     /// <summary>后台概览页离屏取样（--probe-overview &lt;输出.png&gt;）：核对统计卡版式。</summary>

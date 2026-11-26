@@ -223,6 +223,68 @@ public partial class App : Application
             return;
         }
 
+        // 诊断模式：更新落库往返（--probe-jiedu-apply <临时根目录>）
+        // 在临时副本上验证「备份 → 合并 → 再比对无差异」，绝不碰真实 data/lixiang.json
+        if (e.Args.Contains("--probe-jiedu-apply"))
+        {
+            try
+            {
+                var tmpRoot = e.Args[Array.IndexOf(e.Args, "--probe-jiedu-apply") + 1];
+                var srcFile = AppPaths.LixiangFile;
+                Directory.CreateDirectory(Path.Combine(tmpRoot, "data"));
+                File.Copy(srcFile, Path.Combine(tmpRoot, "data", "lixiang.json"), overwrite: true);
+                AppPaths.SetRoot(tmpRoot);
+
+                var store = new LixiangStore();
+                store.Load();
+                var before = store.State.Jiedu.List.Count;
+                // 模拟「本地少一条」：Import 之后必须被原文补回来
+                store.State.Jiedu.List.RemoveAll(x => x.Issue == 13 && x.No == 1);
+
+                var raw = await JieduSource.DownloadAsync();
+                var r1 = JieduSource.Compare(store, raw);
+                var bak = JieduSource.Apply(store, r1);
+                var r2 = JieduSource.Compare(store, raw);
+
+                Console.WriteLine($"[probe-jiedu-apply] before={before} / after={store.State.Jiedu.List.Count} " +
+                                  $"added={r1.Added.Count} updated={r1.Updated.Count} backup={(string.IsNullOrEmpty(bak) ? "none" : "ok")}");
+                Console.WriteLine($"[probe-jiedu-apply] recheck added={r2.Added.Count} updated={r2.Updated.Count} " +
+                                  $"removed={r2.Removed.Count} hashMatch={store.State.Jiedu.SourceHash == r2.RemoteHash}");
+                DiagFinish(r2.Added.Count == 0 && r2.Updated.Count == 0 && store.State.Jiedu.List.Count == before ? 0 : 3);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[probe-jiedu-apply] FAIL " + ex.Message);
+                DiagFinish(2);
+            }
+            return;
+        }
+
+        // 诊断模式：核对解读辅导原文（--probe-jiedu）：下载 → 解析 → 与本地比对，只打印不写库
+        if (e.Args.Contains("--probe-jiedu"))
+        {
+            try
+            {
+                State = new AppState();
+                State.Init(Jiceng);
+                var raw = await JieduSource.DownloadAsync();
+                var r = JieduSource.Compare(State.Lixiang, raw);
+                Console.WriteLine($"[probe-jiedu] remote {r.RemoteIssues.Count} issues / {r.RemoteTotal} items, " +
+                                  $"local {r.LocalIssues.Count} / {r.LocalTotal}");
+                Console.WriteLine($"[probe-jiedu] sha256={r.RemoteHash} size={r.RemoteSize} " +
+                                  $"added={r.Added.Count} updated={r.Updated.Count} removed={r.Removed.Count} hasUpdate={r.HasUpdate}");
+                if (r.NewIssues.Count > 0)
+                    Console.WriteLine("[probe-jiedu] new issues: " + string.Join(",", r.NewIssues));
+                DiagFinish(0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[probe-jiedu] FAIL " + ex.Message);
+                DiagFinish(2);
+            }
+            return;
+        }
+
         // 诊断模式：后台概览页离屏渲染（--probe-overview <输出.png>）
         if (e.Args.Contains("--probe-overview"))
         {
@@ -601,7 +663,32 @@ public partial class App : Application
         // 启动后静默检查 GitHub Release 新版本（8 秒超时，无网 / 最新版都不打扰）
         UpdateChecker.CheckOnStartup(main);
 
+        // 解读辅导原文检查：地址固定，启动后静默核对一次（12 小时节流），
+        // 官方出了新一期才提示，且同一份原文只提示一次
+        _ = AutoCheckJieduAsync(main);
+
         WarmupAsync(State);
+    }
+
+    /// <summary>
+    /// 启动后静默核对国家医保局解读辅导原文：
+    ///   · 地址是固定的，所以软件可以自己查，用户不用去官网翻链接；
+    ///   · 12 小时内查过就不重复下载（255 KB，避免每次开软件都占带宽）；
+    ///   · 只有「条目真的新增/修订」才提示，且同一份原文只提示一次；任何失败都静默。
+    /// </summary>
+    private static async Task AutoCheckJieduAsync(MainWindow main)
+    {
+        try
+        {
+            if (!Views.LixiangView.NeedAutoCheck()) return;
+            await Task.Delay(TimeSpan.FromSeconds(6)).ConfigureAwait(true);   // 让启动预热先跑完
+            if (main is null || !main.IsLoaded) return;
+            await main.ViewLx.CheckJieduAsync(manual: false).ConfigureAwait(true);
+        }
+        catch
+        {
+            // 后台检查失败不能影响任何主功能
+        }
     }
 
     /// <summary>

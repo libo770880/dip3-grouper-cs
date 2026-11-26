@@ -63,8 +63,16 @@ public partial class MainWindow : Window
         App.SettingsChanged += ApplyBranding;
         App.SettingsChanged += OnAppSettingsChanged;
 
-        // 版本号只维护 UpdateChecker.CurrentVersion 一处：按钮提示从常量取，避免 XAML 里再写死一份
+        // 版本号只维护 UpdateChecker.CurrentVersion 一处：菜单项提示与右侧版本号都从常量取
+        if (UpdateChecker.CurrentVersion != null)
+            TxtUpdate.Text = "v" + UpdateChecker.CurrentVersion;
         BtnUpdate.ToolTip = $"检查更新（当前版本 v{UpdateChecker.CurrentVersion}）：到 GitHub Release 下载新版本";
+
+        // 「更多」下拉：点按钮toggle；因为 StaysOpen=False 时点按钮会先关面板，
+        // 记下关闭时刻，250ms 内的再次点击视为「刚关掉」，不再重开（否则点一下关不掉）
+        MorePopup.Opened += (_, _) => PositionMorePopup();
+        MorePopup.Closed += (_, _) => _moreClosedAt = DateTime.UtcNow;
+        SizeChanged += (_, _) => { if (MorePopup.IsOpen) PositionMorePopup(); };
         Closed += (_, _) =>
         {
             App.SettingsChanged -= ApplyBranding;
@@ -105,9 +113,6 @@ public partial class MainWindow : Window
     // 窗口不够宽时整条溢出被裁。按宽度分两档收缩，拉大窗口自动还原。
     // ==================================================================
 
-    private const string AdminBtnFull = "后台管理";
-    private const string AdminBtnShort = "后台";
-
     /// <summary>当前紧凑档：0 标准 / 1 紧凑 / 2 极紧凑（-1 = 尚未算过）。</summary>
     private int _navCompact = -1;
 
@@ -129,12 +134,7 @@ public partial class MainWindow : Window
             rb.Padding = new Thickness(pad, 0, pad, 0);
             rb.FontSize = size;
         }
-        BtnAdmin.Content = mode == 0 ? AdminBtnFull : AdminBtnShort;
-        // 极紧凑档主题按钮只留图标（ToolTip 仍在，不丢功能）
-        TxtThemeBtn.Visibility = mode == 2 ? Visibility.Collapsed : Visibility.Visible;
-        // 行高按钮同款处理：档 1 只留图标、档 2 整块收起（<900 宽度时先保导航）
-        TxtDensity.Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
-        BtnDensity.Visibility = mode == 2 ? Visibility.Collapsed : Visibility.Visible;
+        // 右侧操作区已收进「更多」下拉（2026-11-24），菜单项不随窗口宽度伸缩，这里不需要再调
     }
 
     protected override void OnContentRendered(EventArgs e)
@@ -186,7 +186,7 @@ public partial class MainWindow : Window
         }
         ThemeHost.ItemsSource = _themeCards;
 
-        ThemePopup.PlacementTarget = BtnTheme;
+        ThemePopup.PlacementTarget = BtnMore;
         ThemePopup.Opened += (_, _) => PositionThemePopup();
         SizeChanged += (_, _) => { if (ThemePopup.IsOpen) PositionThemePopup(); };
 
@@ -195,9 +195,43 @@ public partial class MainWindow : Window
         SyncThemeCards(ThemeManager.CurrentId);
     }
 
+    /// <summary>「更多」下拉：行高 / 主题 / 检查更新 / 后台管理（2026-11-24 从标题栏一排按钮收进来）</summary>
+    private DateTime _moreClosedAt = DateTime.MinValue;
+
+    private void OnToggleMore(object sender, RoutedEventArgs e)
+    {
+        if (MorePopup.IsOpen) { MorePopup.IsOpen = false; return; }
+        // 面板因「点到按钮算外部点击」先关了一次，这里别再立刻弹回来
+        if ((DateTime.UtcNow - _moreClosedAt).TotalMilliseconds < 250) return;
+        MorePopup.IsOpen = true;
+    }
+
+    /// <summary>诊断/自检用：下拉面板根元素（Popup 未打开时不在视觉树里，需单独渲染）</summary>
+    internal FrameworkElement MorePanel => MorePopup.Child as FrameworkElement;
+
+    /// <summary>诊断用：直接打开下拉（不模拟点击，避免 Popup 抢焦）</summary>
+    internal void DiagOpenMore()
+    {
+        PositionMorePopup();
+        MorePopup.IsOpen = true;
+    }
+
+    /// <summary>菜单右边缘与「更多」按钮对齐；越出窗口右侧时夹回来</summary>
+    private void PositionMorePopup()
+    {
+        if (MorePopup.Child is not FrameworkElement fe) return;
+        var w = fe.Width + fe.Margin.Left + fe.Margin.Right;
+        var off = -(w - BtnMore.ActualWidth - 4);
+        var left = BtnMore.TranslatePoint(new Point(0, 0), this).X + off;
+        if (left + w > ActualWidth - 8) off -= (left + w) - (ActualWidth - 8);
+        if (left < 8) off += 8 - left;
+        MorePopup.HorizontalOffset = off;
+    }
+
     private void OnToggleTheme(object sender, RoutedEventArgs e)
     {
         if (ThemePopup.IsOpen) { ThemePopup.IsOpen = false; return; }
+        MorePopup.IsOpen = false;      // 从「更多」里点主题：先收菜单，再出配色面板
         ThemePopup.IsOpen = true;
     }
 
@@ -207,14 +241,16 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnCheckUpdate(object sender, RoutedEventArgs e)
     {
+        MorePopup.IsOpen = false;
         BtnUpdate.IsEnabled = false;
         TxtUpdate.Text = "检查中…";
         try
         {
-            TxtUpdate.Text = await UpdateChecker.CheckManualAsync(this) ?? "检查更新";
+            await UpdateChecker.CheckManualAsync(this);
         }
         finally
         {
+            TxtUpdate.Text = "v" + UpdateChecker.CurrentVersion;   // 右侧恢复成版本号（结果已用弹窗告知）
             BtnUpdate.IsEnabled = true;
         }
     }
@@ -233,8 +269,8 @@ public partial class MainWindow : Window
     {
         if (ThemePopup.Child is not FrameworkElement fe) return;
         var w = fe.Width + fe.Margin.Left + fe.Margin.Right;
-        var off = -(w - BtnTheme.ActualWidth - 4);
-        var left = BtnTheme.TranslatePoint(new Point(0, 0), this).X + off;
+        var off = -(w - BtnMore.ActualWidth - 4);
+        var left = BtnMore.TranslatePoint(new Point(0, 0), this).X + off;
         if (left < 8) off += 8 - left;
         ThemePopup.HorizontalOffset = off;
     }
@@ -717,6 +753,14 @@ public partial class MainWindow : Window
     {
         // --show dz:slow —— 白块滑动放慢到 3s，供外部截图探针逐帧核对补间
         Console.WriteLine("[show] page=" + page);
+        // jd = 立项指南页的「解读辅导」视图（外部探针/人工核对检查更新入口时用）
+        if (string.Equals(page, "jd", StringComparison.OrdinalIgnoreCase))
+        {
+            NavLx.IsChecked = true;
+            ShowView();
+            ViewLx.DiagJiedu("", -1);
+            return;
+        }
         if ((page ?? "").EndsWith(":slow", StringComparison.OrdinalIgnoreCase))
         {
             Controls.Segment.SlideMsOverride = 3000;
@@ -1208,6 +1252,7 @@ public partial class MainWindow : Window
 
     private void OnOpenAdmin(object sender, RoutedEventArgs e)
     {
+        MorePopup.IsOpen = false;
         if (_admin == null)
         {
             // 登录开关与凭据都在「后台管理 · 系统设置」里维护（data/settings.json）

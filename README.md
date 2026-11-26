@@ -3909,6 +3909,18 @@ force push 清除；`settings.json` / `audit-log.json` 自此不入库，缺失�
 3. GitHub 新建 Release：tag 用 `vX.Y.Z`，上传 zip 资产；
 4. 用户端启动即收到新版提示。
 
+### 11.2 已发版本台账
+
+| 版本 | 日期 | 资产 | SHA-256（前 16 位） | 内容 |
+| --- | --- | --- | --- | --- |
+| v1.0.1 | 2026-11-18 | DIP3-Desktop-v1.0.1.zip（84.2 MB） | — | 解读按国家局原文重导入（224→226），半角问号解析修复 |
+| v1.0.2 | 2026-11-26 | DIP3-Desktop-v1.0.2.zip（84.2 MB） | `5b3ad77a47968ecf` | 解读软件内增量更新；标题栏收进「更多」下拉；工具条自适应（§9.51–9.53） |
+
+v1.0.2 发布记录：本地提交 `b7c2dc3`（rebase 到远端 `82df579` 之上，历史终于对齐）、
+Release tag `v1.0.2` 指向该提交、zip 资产上传成功（201）、`releases/latest` 已返回 v1.0.2
+（软件内检查更新立即可用）。zip 打包排除 `data/settings.json` / `data/audit-log.json`，
+出包后校验过无敏感文件泄漏。
+
 ### 11.1 解读辅导按国家局原文重导入（2026-11-18，v1.0.1）
 
 国家医保局解读辅导原文（<https://www.nhsa.gov.cn/module/download/downfile.jsp?classid=0&filename=976ce73a34c94bdab08920c94d2b5df6.wps>，
